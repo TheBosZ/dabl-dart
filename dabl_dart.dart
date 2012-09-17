@@ -1,3 +1,7 @@
+#import("query.dart");
 void main() {
-  print("Hello, World!");
+  Query q = new Query();
+  q.addAnd('nathan', 2);
+  q.addAnd('bob', 'fred');
+  print(q.getWhereClause());
 }
