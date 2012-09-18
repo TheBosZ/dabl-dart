@@ -72,11 +72,17 @@ class Condition {
     if(1 > _conds.length) {
       return null;
     }
-    StringBuffer result = new StringBuffer();
-    for(final cond in _conds) {
-      result.add('${cond[1]} = ${cond[2]}');
+    
+    StringBuffer sb = new StringBuffer();
+    QueryStatement statement = new QueryStatement(conn);
+    for(final List<String> cond in this._conds) {
+      sb.add("\n\t");
+      
     }
-    return result.toString();
+  }
+  
+  static _processCondition([left, right, oper = Query.EQUAL, quote]) {
+    
   }
 
 }
