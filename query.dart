@@ -2,56 +2,56 @@
 #source('condition.dart');
 #source('query_statement.dart');
 class Query {
-  static final String ACTION_COUNT = 'COUNT';
-  static final String ACTION_DELETE = 'DELETE';
-  static final String ACTION_SELECT = 'SELECT';
-  static final String ACTION_UPDATE = 'UPDATE';
+  static const String ACTION_COUNT = 'COUNT';
+  static const String ACTION_DELETE = 'DELETE';
+  static const String ACTION_SELECT = 'SELECT';
+  static const String ACTION_UPDATE = 'UPDATE';
 
   // Comparison types
-  static final String EQUAL = '=';
-  static final String NOT_EQUAL = '<>';
-  static final String ALT_NOT_EQUAL = '!=';
-  static final String GREATER_THAN = '>';
-  static final String LESS_THAN = '<';
-  static final String GREATER_EQUAL = '>=';
-  static final String LESS_EQUAL = '<=';
-  static final String LIKE = 'LIKE';
-  static final String BEGINS_WITH = 'BEGINS_WITH';
-  static final String ENDS_WITH = 'ENDS_WITH';
-  static final String CONTAINS = 'CONTAINS';
-  static final String NOT_LIKE = 'NOT LIKE';
-  static final String CUSTOM = 'CUSTOM';
-  static final String DISTINCT = 'DISTINCT';
-  static final String IN = 'IN';
-  static final String NOT_IN = 'NOT IN';
-  static final String ALL = 'ALL';
-  static final String IS_NULL = 'IS NULL';
-  static final String IS_NOT_NULL = 'IS NOT NULL';
-  static final String BETWEEN = 'BETWEEN';
+  static const String EQUAL = '=';
+  static const String NOT_EQUAL = '<>';
+  static const String ALT_NOT_EQUAL = '!=';
+  static const String GREATER_THAN = '>';
+  static const String LESS_THAN = '<';
+  static const String GREATER_EQUAL = '>=';
+  static const String LESS_EQUAL = '<=';
+  static const String LIKE = 'LIKE';
+  static const String BEGINS_WITH = 'BEGINS_WITH';
+  static const String ENDS_WITH = 'ENDS_WITH';
+  static const String CONTAINS = 'CONTAINS';
+  static const String NOT_LIKE = 'NOT LIKE';
+  static const String CUSTOM = 'CUSTOM';
+  static const String DISTINCT = 'DISTINCT';
+  static const String IN = 'IN';
+  static const String NOT_IN = 'NOT IN';
+  static const String ALL = 'ALL';
+  static const String IS_NULL = 'IS NULL';
+  static const String IS_NOT_NULL = 'IS NOT NULL';
+  static const String BETWEEN = 'BETWEEN';
 
 // Comparison type for update
-  static final String CUSTOM_EQUAL = 'CUSTOM_EQUAL';
+  static const String CUSTOM_EQUAL = 'CUSTOM_EQUAL';
 
   // PostgreSQL comparison types
-  static final String ILIKE = 'ILIKE';
-  static final String NOT_ILIKE = 'NOT ILIKE';
+  static const String ILIKE = 'ILIKE';
+  static const String NOT_ILIKE = 'NOT ILIKE';
 
   // JOIN TYPES
-  static final String JOIN = 'JOIN';
-  static final String LEFT_JOIN = 'LEFT JOIN';
-  static final String RIGHT_JOIN = 'RIGHT JOIN';
-  static final String INNER_JOIN = 'INNER JOIN';
-  static final String OUTER_JOIN = 'OUTER JOIN';
+  static const String JOIN = 'JOIN';
+  static const String LEFT_JOIN = 'LEFT JOIN';
+  static const String RIGHT_JOIN = 'RIGHT JOIN';
+  static const String INNER_JOIN = 'INNER JOIN';
+  static const String OUTER_JOIN = 'OUTER JOIN';
 
   // Binary AND
-  static final String BINARY_AND = '&';
+  static const String BINARY_AND = '&';
 
   // Binary OR
-  static final String BINARY_OR = '|';
+  static const String BINARY_OR = '|';
 
   // 'Order by' qualifiers
-  static final String ASC = 'ASC';
-  static final String DESC = 'DESC';
+  static const String ASC = 'ASC';
+  static const String DESC = 'DESC';
 
   String action;
   String table;

@@ -5,25 +5,25 @@ class Condition {
   /**
    * escape only the first parameter
    */
-  static final int QUOTE_LEFT = 1;
+  static const int QUOTE_LEFT = 1;
 
   /**
    * escape only the second param
    */
-  static final int QUOTE_RIGHT = 2;
+  static const int QUOTE_RIGHT = 2;
 
   /**
    * escape both params
    */
-  static final int QUOTE_BOTH = 3;
+  static const int QUOTE_BOTH = 3;
 
   /**
    * escape no params
    */
-  static final int QUOTE_NONE = 4;
+  static const int QUOTE_NONE = 4;
 
-  static final String OR = 'OR';
-  static final String AND = 'AND';
+  static const String OR = 'OR';
+  static const String AND = 'AND';
 
   List<List> _conds;
 
