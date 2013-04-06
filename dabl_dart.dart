@@ -1,4 +1,4 @@
-#import("query.dart");
+import "query.dart";
 void main() {
   Query q = new Query();
   q.addAnd('nathan', 2);

@@ -1,5 +1,4 @@
-
-
+part of dabl_query;
 
 class Condition {
   /**
@@ -72,17 +71,17 @@ class Condition {
     if(1 > _conds.length) {
       return null;
     }
-    
+
     StringBuffer sb = new StringBuffer();
     QueryStatement statement = new QueryStatement(conn);
     for(final List<String> cond in this._conds) {
-      sb.add("\n\t");
-      
+      sb.write("\n\t");
+
     }
   }
-  
+
   static _processCondition([left, right, oper = Query.EQUAL, quote]) {
-    
+
   }
 
 }

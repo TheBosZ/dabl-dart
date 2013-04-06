@@ -1,3 +1,4 @@
+part of dabl_query;
 
 class QueryStatement {
   /**
@@ -14,33 +15,33 @@ class QueryStatement {
    * @var string
    */
   String query_string = '';
-  
+
   /**
    * @var array
    */
   List params = new List();
-  
+
   /**
    * @var DABLPDO
    */
   String connection;
-  
+
   /**
    * @var array
    */
   List identifiers = new List();
-  
+
   QueryStatement([this.connection = null]);
-  
+
   static String embedParams(String string, List parameters, [conn]) {
     if(string.split(QueryStatement.IDENTIFIER).length - 1 != parameters.length) {
       throw new Exception("The number of occurences of ${QueryStatement.IDENTIFIER} does not match the number of parameters");
     }
-    
+
     if(parameters.length == 0) {
       return string;
     }
-    
+
     var currentIndex = string.length;
     var plen = QueryStatement.IDENTIFIER.length;
     var identifier;
@@ -52,7 +53,7 @@ class QueryStatement {
       }
       string = string.substring(0, currentIndex).concat(identifier).concat(string.substring(currentIndex + plen));
     }
-    
+
     return string;
   }
 }

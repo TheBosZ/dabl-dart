@@ -1,6 +1,6 @@
-#library('dabl-query');
-#source('condition.dart');
-#source('query_statement.dart');
+library dabl_query;
+part 'condition.dart';
+part 'query_statement.dart';
 class Query {
   static const String ACTION_COUNT = 'COUNT';
   static const String ACTION_DELETE = 'DELETE';
