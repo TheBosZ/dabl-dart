@@ -24,14 +24,59 @@ class QueryStatement {
   /**
    * @var DABLPDO
    */
-  String connection;
+  String _connection;
 
   /**
    * @var array
    */
   List identifiers = new List();
 
-  QueryStatement([this.connection = null]);
+  QueryStatement([this._connection = null]);
+
+  void setConnection(conn) {
+    this._connection = conn;
+  }
+
+  String getConnection() {
+    return _connection;
+  }
+
+  void setString(String string){
+    this.query_string = string;
+  }
+
+  String getString() {
+    return query_string;
+  }
+
+  void addParams(List params) {
+    this.params.addAll(params);
+  }
+
+  void setParams(List params) {
+    this.params = params;
+  }
+
+  void addParam(param) {
+    params.add(param);
+  }
+
+  List getParams() {
+    return params;
+  }
+
+  void addIdentifiers(List idents) {
+    identifiers.addAll(idents);
+  }
+
+  void setIdentifiers(idents) {
+    identifiers = idents;
+  }
+
+  void addIdentifier(ident) {
+    identifiers.add(ident);
+  }
+
 
   static String embedParams(String string, List parameters, [conn]) {
     if(string.split(QueryStatement.IDENTIFIER).length - 1 != parameters.length) {
