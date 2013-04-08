@@ -104,9 +104,9 @@ class QueryStatement {
 
     for(var x = 0; x < identifiers.length; ++x) {
       if(string.indexOf(QueryStatement.IDENTIFIER) == -1){
-        throw new Exception('The number of identifiers exceeds the number of replacements');
+        break;
       }
-      string.replaceFirst(QueryStatement.IDENTIFIER, identifiers[x]);
+      string = string.replaceFirst(QueryStatement.IDENTIFIER, identifiers[x]);
     }
 
     if(string.indexOf(QueryStatement.IDENTIFIER) != -1){

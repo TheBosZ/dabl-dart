@@ -55,7 +55,7 @@ class Query {
   static const String ASC = 'ASC';
   static const String DESC = 'DESC';
 
-  String _action;
+  String _action = Query.ACTION_SELECT;
   String _table;
   String _tableAlias;
   bool _distinct = false;
@@ -141,7 +141,7 @@ class Query {
       }
     }
 
-    if(!alias.isEmpty) {
+    if(null != alias && !alias.isEmpty) {
       this.setAlias(alias);
     }
     _table = name;
@@ -464,9 +464,10 @@ class Query {
     var table_stmnt = this.getTablesClause(conn);
     stmnt.addIdentifiers(table_stmnt.getIdentifiers());
     stmnt.addParams(table_stmnt.getParams());
-    qry_s.write(table_stmnt.toString());
-    var join_stmnt;
-    if (!this._joins.isEmpty) {
+    qry_s.write(table_stmnt.getString());
+    
+    if (null != _joins && !this._joins.isEmpty) {
+      var join_stmnt;
       for (QueryJoin join in this._joins) {
         join_stmnt = join.getQueryStatement(conn);
         qry_s.write("\n\t");
@@ -501,7 +502,7 @@ class Query {
       stmnt.addIdentifiers(where_stmnt.getIdentifiers());
     }
 
-    if (!this._groups.isEmpty) {
+    if (null != _groups && !this._groups.isEmpty) {
       var clause = this.getGroupByClause();
       stmnt.addIdentifiers(clause.getIdentifiers());
       stmnt.addParams(clause.getParams());
@@ -518,7 +519,7 @@ class Query {
       }
     }
 
-    if (Query.ACTION_COUNT != this._action && !this._orders.isEmpty) {
+    if (Query.ACTION_COUNT != this._action && null != _orders && !this._orders.isEmpty) {
       var clause = this.getOrderByClause();
       stmnt.addIdentifiers(clause.getIdentifiers());
       stmnt.addParams(clause.getParams());
@@ -559,21 +560,22 @@ class Query {
 
     var statement = new QueryStatement(conn);
     String alias = this.getAlias();
+    
     var table_statement;
     String table_string;
+    
     // if table is a Query, get its QueryStatement
     if (table is Query) {
       table_statement = (table as Query).getQuery(conn);
       table_string = '(${table_statement.getString()})';
-    } else {
-      table_statement = null;
-    }
+    } 
 
     switch (this._action) {
       case Query.ACTION_UPDATE:
       case Query.ACTION_COUNT:
       case Query.ACTION_SELECT:
         // setup identifiers for table_string
+        StringBuffer sb = new StringBuffer();
         if (null != table_statement) {
           statement.addIdentifiers(table_statement.getIdentifiers());
           statement.addParams(table_statement.getParams());
@@ -581,22 +583,24 @@ class Query {
           // if table has no spaces, assume it is an identifier
           if ((table as String).indexOf(" ") == -1) {
             statement.addIdentifier(table);
-            table_string = QueryStatement.IDENTIFIER;
+            sb.write(QueryStatement.IDENTIFIER);
           } else {
-            table_string = table.toString();
+            sb.write(table.toString());
           }
         }
 
         // append $alias, if it's not empty
-        if (!alias.isEmpty) {
-          table_string = "${table_string} AS ${alias}";
+        if (null != alias && !alias.isEmpty) {
+          sb.write(" AS ${alias}");
         }
-        StringBuffer sb = new StringBuffer();
+        
         // setup identifiers for any additional tables
-        if (!this._extraTables.isEmpty) {
+        if (null != _extraTables && !this._extraTables.isEmpty) {
           String extra_table_string;
+          String temp = sb.toString();
+          sb = new StringBuffer();
           sb.write("(");
-          sb.write(table_string);
+          sb.write(temp);
           this._extraTables.forEach((String t_alias, extra_table) {
             if (extra_table is Query) {
               var extra_table_statement = (extra_table as Query).getQuery(conn);
@@ -715,14 +719,14 @@ class Query {
 
     // setup columns_string
     String columns_string;
-    if (!this._columns.isEmpty) {
+    if (null != this._columns && !this._columns.isEmpty) {
       List placeholders = new List();
       _columns.forEach((k, String column) {
         statement.addIdentifier(column);
         placeholders.add(QueryStatement.IDENTIFIER);
       });
       columns_string = placeholders.join(', ');
-    } else if (!alias.isEmpty) {
+    } else if (null != alias && !alias.isEmpty) {
       // default to selecting only columns from the target table
       columns_string = "${alias}.*";
     } else {
@@ -773,7 +777,7 @@ class Query {
 
   String toString() {
     Query q = this;
-    if (q.getTable().isEmpty) {
+    if (null == q.getTable() || q.getTable().isEmpty) {
       q.setTable('{UNSPECIFIED-TABLE}');
     }
     return q.getQuery().toString();
