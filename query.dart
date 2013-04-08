@@ -233,12 +233,12 @@ class Query {
     return this;
   }
 
-  Query addAnd(String column, [value, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]){
+  Query addAnd(column, [value, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]){
     _where.addAnd(column, value, oper, quote);
     return this;
   }
 
-  Query add(String column, [value, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]){
+  Query add(column, [value, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]){
     this.addAnd(column, value, oper, quote);
     return this;
   }

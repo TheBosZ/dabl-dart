@@ -135,10 +135,7 @@ class QueryStatement {
     }
 
     for(var x = 0; x < params.length; ++x) {
-      if(string.indexOf(QueryStatement.PARAM) == -1){
-        throw new Exception('The number of parameters exceeds the number of replacements');
-      }
-      string.replaceFirst(QueryStatement.PARAM, params[x]);
+      string = string.replaceFirst(QueryStatement.PARAM, params[x].toString());
     }
 
     if(string.indexOf(QueryStatement.PARAM) != -1){

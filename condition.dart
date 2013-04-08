@@ -188,7 +188,7 @@ class Condition {
     return ands;
   }
 
-  Condition addOr(left, [right, oper = Query.EQUAL, quote]) {
+  Condition addOr(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
     if(null == left) {
       return this;
     }
@@ -336,14 +336,8 @@ class Condition {
         is_first = false;
         is_second = true;
       } else {
-       if(is_second) {
-         if(Condition.OR == _conds[0][0]){
-           sb.write(Condition.OR);
-         }
-         is_second = false;
-       } else {
-         sb.write(cond[0]);
-       }
+        sb.write(is_second && Condition.OR == _conds[0][0] ? Condition.OR : cond[0] + ' ');
+        is_second = false;
       }
       sb.write(temp.getString());
       statement.addParams(temp.getParams());

@@ -1,8 +1,11 @@
 import "query.dart";
 void main() {
   Query q = new Query();
-  //q.setAction(Query.ACTION_SELECT);
-  q.addAnd('nathan', 2);
-  q.addAnd('bob', 'fred');
-  print(q.toString());
+  q.add('nathan', 2);
+  q.add('bob', 'fred');
+  Condition c = new Condition();
+  c.add('fired', false);
+  c.addOr('hired', false);
+  q.add(c);
+  print(q);
 }
