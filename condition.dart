@@ -26,14 +26,14 @@ class Condition {
 
   List<List> _conds;
 
-  Condition([left = null, right = null, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+  Condition([left = null, right = null, oper = Query.EQUAL, quote = null]) {
     _conds = new List<List<String>>();
     if(null != left) {
       this.add(left, right, oper, quote);
     }
   }
 
-  static Condition create([left = null, right = null, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+  static Condition create([left = null, right = null, oper = Query.EQUAL, quote = null]) {
     return new Condition(left, right, oper, quote);
   }
 
@@ -161,11 +161,11 @@ class Condition {
     return statement;
   }
 
-  Condition add(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+  Condition add(left, [right, oper = Query.EQUAL, quote = null]) {
     return this.addAnd(left, right, oper, quote);
   }
 
-  Condition addAnd(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+  Condition addAnd(left, [right, oper = Query.EQUAL, quote = null]) {
     if(null == left) {
       return this;
     }
@@ -188,7 +188,7 @@ class Condition {
     return ands;
   }
 
-  Condition addOr(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+  Condition addOr(left, [right, oper = Query.EQUAL, quote = null]) {
     if(null == left) {
       return this;
     }
