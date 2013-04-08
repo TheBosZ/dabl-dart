@@ -120,13 +120,16 @@ class Query {
     return _groups;
   }
 
-  Query setTable(name, [String alias = null]) {
+  Query setTable(var name, [String alias = null]) {
+    if(name == null){
+      return this;
+    }
     if(name is Query) {
       if(null == alias) {
         throw new Exception('The nested query must have an alias.');
       }
     } else if (null == alias) {
-      String table = name as String;
+      String table = (name as String);
       int space = table.indexOf(" ");
       int as_pos = table.toUpperCase().indexOf(" AS ");
       if(as_pos != space - 3) {
@@ -452,15 +455,15 @@ class Query {
       case Query.ACTION_SELECT:
       default:
         var columns_stmnt = this.getColumnsClause(conn);
-        stmnt.addIdentifiers(columns_stmnt.identifiers);
-        stmnt.addParams(columns_stmnt.params);
+        stmnt.addIdentifiers(columns_stmnt.getIdentifiers());
+        stmnt.addParams(columns_stmnt.getParams());
         qry_s.write('SELECT ${columns_stmnt.getString()}\nFROM ');
         break;
     }
 
     var table_stmnt = this.getTablesClause(conn);
-    stmnt.addIdentifiers(table_stmnt.identifiers);
-    stmnt.addParams(table_stmnt.params);
+    stmnt.addIdentifiers(table_stmnt.getIdentifiers());
+    stmnt.addParams(table_stmnt.getParams());
     qry_s.write(table_stmnt.toString());
     var join_stmnt;
     if (!this._joins.isEmpty) {
@@ -494,14 +497,14 @@ class Query {
     if (null != where_stmnt && !where_stmnt.getString().trim().isEmpty) {
       qry_s.write("\nWHERE ");
       qry_s.write(where_stmnt.getString());
-      stmnt.addParams(where_stmnt.params);
-      stmnt.addIdentifiers(where_stmnt.identifiers);
+      stmnt.addParams(where_stmnt.getParams());
+      stmnt.addIdentifiers(where_stmnt.getIdentifiers());
     }
 
     if (!this._groups.isEmpty) {
       var clause = this.getGroupByClause();
-      stmnt.addIdentifiers(clause.identifiers);
-      stmnt.addParams(clause.params);
+      stmnt.addIdentifiers(clause.getIdentifiers());
+      stmnt.addParams(clause.getParams());
       qry_s.write(clause.getString());
     }
 
@@ -510,15 +513,15 @@ class Query {
       if (null != having_stmnt) {
         qry_s.write("\nHAVING ");
         qry_s.write(having_stmnt);
-        stmnt.addParams(having_stmnt.params);
-        stmnt.addIdentifiers(having_stmnt.identifiers);
+        stmnt.addParams(having_stmnt.getParams());
+        stmnt.addIdentifiers(having_stmnt.getIdentifiers());
       }
     }
 
     if (Query.ACTION_COUNT != this._action && !this._orders.isEmpty) {
       var clause = this.getOrderByClause();
-      stmnt.addIdentifiers(clause.identifiers);
-      stmnt.addParams(clause.params);
+      stmnt.addIdentifiers(clause.getIdentifiers());
+      stmnt.addParams(clause.getParams());
       qry_s.write(clause.getString());
     }
 
@@ -572,8 +575,8 @@ class Query {
       case Query.ACTION_SELECT:
         // setup identifiers for table_string
         if (null != table_statement) {
-          statement.addIdentifiers(table_statement.identifiers);
-          statement.addParams(table_statement.params);
+          statement.addIdentifiers(table_statement.getIdentifiers());
+          statement.addParams(table_statement.getParams());
         } else {
           // if table has no spaces, assume it is an identifier
           if ((table as String).indexOf(" ") == -1) {
@@ -598,8 +601,8 @@ class Query {
             if (extra_table is Query) {
               var extra_table_statement = (extra_table as Query).getQuery(conn);
               extra_table_string = '(${extra_table_statement.getString()}) AS  ${t_alias}';
-              statement.addParams(extra_table_statement.params);
-              statement.addIdentifiers(extra_table_statement.identifiers);
+              statement.addParams(extra_table_statement.getParams());
+              statement.addIdentifiers(extra_table_statement.getIdentifiers());
             } else {
               extra_table_string = extra_table.toString();
               if (extra_table_string.indexOf(' ') == -1) {
@@ -619,8 +622,8 @@ class Query {
         break;
       case Query.ACTION_DELETE:
         if (null != table_statement) {
-          statement.addIdentifiers(table_statement.identifiers);
-          statement.addParams(table_statement.params);
+          statement.addIdentifiers(table_statement.getIdentifiers());
+          statement.addParams(table_statement.getParams());
         } else {
           // if table has no spaces, assume it is an identifier
           if (table.indexOf(' ') == -1) {

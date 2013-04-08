@@ -14,12 +14,12 @@ class QueryStatement {
   /**
    * @var string
    */
-  String query_string = '';
+  String _query_string = '';
 
   /**
    * @var array
    */
-  List params = new List();
+  List _params = new List();
 
   /**
    * @var DABLPDO
@@ -29,7 +29,7 @@ class QueryStatement {
   /**
    * @var array
    */
-  List identifiers = new List();
+  List _identifiers = new List();
 
   QueryStatement([this._connection = null]);
 
@@ -42,63 +42,116 @@ class QueryStatement {
   }
 
   void setString(String string){
-    this.query_string = string;
+    this._query_string = string;
   }
 
   String getString() {
-    return query_string;
+    return _query_string;
   }
 
   void addParams(List params) {
-    this.params.addAll(params);
+    this._params.addAll(params);
   }
 
   void setParams(List params) {
-    this.params = params;
+    this._params = params;
   }
 
   void addParam(param) {
-    params.add(param);
+    _params.add(param);
   }
 
   List getParams() {
-    return params;
+    return _params;
   }
 
   void addIdentifiers(List idents) {
-    identifiers.addAll(idents);
+    this._identifiers.addAll(idents);
   }
 
   void setIdentifiers(idents) {
-    identifiers = idents;
+    _identifiers = idents;
   }
 
   void addIdentifier(ident) {
-    identifiers.add(ident);
+    _identifiers.add(ident);
   }
 
+  List getIdentifiers() {
+    return _identifiers;
+  }
 
-  static String embedParams(String string, List parameters, [conn]) {
-    if(string.split(QueryStatement.IDENTIFIER).length - 1 != parameters.length) {
-      throw new Exception("The number of occurences of ${QueryStatement.IDENTIFIER} does not match the number of parameters");
+  String toString() {
+    String string = this._query_string;
+    var conn = this._connection;
+
+    // if a connection is available, use it
+    /*
+    if (null == $conn && class_exists('DBManager')) {
+      $conn = DBManager.getConnection();
+    }*/
+
+    string = QueryStatement.embedIdentifiers(string, this._identifiers.toList(), conn);
+    return QueryStatement.embedParams(string, this._params.toList(), conn);
+  }
+
+  static String embedIdentifiers(String string, List identifiers, [conn = null]) {
+    /*
+    if (null != conn) {
+      identifiers = conn.quoteIdentifier(identifiers);
     }
+    */
 
-    if(parameters.length == 0) {
-      return string;
-    }
-
-    var currentIndex = string.length;
-    var plen = QueryStatement.IDENTIFIER.length;
-    var identifier;
-    for(var x = parameters.length - 1; x>=0; --x) {
-      identifier = parameters[x];
-      currentIndex = string.lastIndexOf(IDENTIFIER, currentIndex);
-      if(currentIndex == -1) {
-        throw new Exception("The number of occurences of ${QueryStatement.IDENTIFIER} does not match the number of parameters");
+    for(var x = 0; x < identifiers.length; ++x) {
+      if(string.indexOf(QueryStatement.IDENTIFIER) == -1){
+        throw new Exception('The number of identifiers exceeds the number of replacements');
       }
-      string = string.substring(0, currentIndex).concat(identifier).concat(string.substring(currentIndex + plen));
+      string.replaceFirst(QueryStatement.IDENTIFIER, identifiers[x]);
     }
 
+    if(string.indexOf(QueryStatement.IDENTIFIER) != -1){
+      throw new Exception('The number of replacements does not match the number of identifiers');
+    }
     return string;
+  }
+
+  static String embedParams(String string, List params, [conn = null]) {
+    if (false && null != conn) {
+     // params = $conn->prepareInput($params);
+    } else {
+      for(int x = 0; x < params.length; ++ x) {
+        var value = params[x];
+        if (value is int) {
+          continue;
+        } else if (value is bool) {
+          value = (value as bool) ? 1 : 0;
+        } else if (null == value ) {
+          value = 'NULL';
+        } else {
+          value = "'{${value}}'";
+        }
+        params[x] = value;
+      }
+    }
+
+    for(var x = 0; x < params.length; ++x) {
+      if(string.indexOf(QueryStatement.PARAM) == -1){
+        throw new Exception('The number of parameters exceeds the number of replacements');
+      }
+      string.replaceFirst(QueryStatement.PARAM, params[x]);
+    }
+
+    if(string.indexOf(QueryStatement.PARAM) != -1){
+      throw new Exception('The number of replacements does not match the number of parameters');
+    }
+    return string;
+  }
+
+  bindAndExecute() {
+    /*
+    var conn = this._connection;
+    conn = conn || Adapter.getConnection();
+    return conn.execute(this._qString, this._params);
+    */
   }
 }

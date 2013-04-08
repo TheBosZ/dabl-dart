@@ -48,7 +48,7 @@ class Condition {
       if(null == clause) {
         return null;
       }
-      clause.query_string = "(${clause.query_string})";
+      clause.setString("(${clause.getString()})");
       return clause;
     }
 
@@ -106,9 +106,9 @@ class Condition {
           return null;
         }
 
-        right = "(${clause.query_string})";
-        statement.addParams(clause.params);
-        statement.addIdentifiers(clause.identifiers);
+        right = "(${clause.getString()})";
+        statement.addParams(clause.getParams());
+        statement.addIdentifiers(clause.getIdentifiers());
         if(Condition.QUOTE_LEFT != quote) {
           quote = Condition.QUOTE_NONE;
         }
@@ -117,12 +117,12 @@ class Condition {
         int arrlength = r.length;
 
         if(2 == arrlength && Query.BETWEEN == operator){
-          statement.query_string = "${left} ${operator} ${QueryStatement.PARAM} AND ${QueryStatement.PARAM}";
+          statement.setString("${left} ${operator} ${QueryStatement.PARAM} AND ${QueryStatement.PARAM}");
           statement.addParams(r);
           return statement;
         } else if(0 == arrlength){
           if(Query.IN == operator) {
-            statement.query_string = "(0 = 1)";
+            statement.setString("(0 = 1)");
             return statement;
           } else if(Query.NOT_IN == operator) {
             return null;
@@ -157,7 +157,7 @@ class Condition {
         right = QueryStatement.PARAM;
       }
     }
-    statement.query_string = "${left} ${operator} ${right}";
+    statement.setString("${left} ${operator} ${right}");
     return statement;
   }
 
@@ -301,7 +301,7 @@ class Condition {
   }
 
   Condition orBetween(column, $from, $to) {
-    return this.addOr(column, array($from, $to), Query.BETWEEN);
+    return this.addOr(column, [$from, $to], Query.BETWEEN);
   }
 
   Condition orBeginsWith(column, value) {
@@ -327,7 +327,7 @@ class Condition {
     bool is_first = true, is_second = false;
 
     for(final List<String> cond in this._conds) {
-      temp = Condition._processCondition(cond[0], cond[1], cond[2], cond[3]);
+      temp = Condition._processCondition(cond[1], cond[2], cond[3], cond[4]);
       if(null == temp) {
         continue;
       }
@@ -347,7 +347,7 @@ class Condition {
       }
       sb.write(temp.getString());
       statement.addParams(temp.getParams());
-      statement.addIdentifiers(temp.identifiers);
+      statement.addIdentifiers(temp.getIdentifiers());
     }
     statement.setString(sb.toString());
     return statement;
