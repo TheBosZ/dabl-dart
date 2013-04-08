@@ -48,7 +48,7 @@ class Condition {
       if(null == clause) {
         return null;
       }
-      clause.setString("(${clause.getString()})");
+      clause.setString("(${clause.getString().trim()})");
       return clause;
     }
 

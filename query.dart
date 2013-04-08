@@ -233,12 +233,12 @@ class Query {
     return this;
   }
 
-  Query addAnd(column, [value, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]){
+  Query addAnd(column, [value, oper = Query.EQUAL, quote = null]){
     _where.addAnd(column, value, oper, quote);
     return this;
   }
 
-  Query add(column, [value, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]){
+  Query add(column, [value, oper = Query.EQUAL, quote = null]){
     this.addAnd(column, value, oper, quote);
     return this;
   }
@@ -815,17 +815,6 @@ class Query {
     q.setAction(Query.ACTION_SELECT);
     return q.getQuery(conn).bindAndExecute();
   }
-
-  /**
-   * Do not use this if you can avoid it.  Just use doUpdate.
-   * @deprecated
-   * @see Query::doUpdate
-   * @return Query
-
-  function setUpdateColumnValues(array column_values) {
-    this._updateColumnValues = column_values;
-    return this;
-  }*/
 
   int doUpdate(Map column_values, [conn = null]) {
     Query q = this;

@@ -128,7 +128,7 @@ class QueryStatement {
         } else if (null == value ) {
           value = 'NULL';
         } else {
-          value = "'{${value}}'";
+          value = "'${value}'";
         }
         params[x] = value;
       }
