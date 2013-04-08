@@ -26,49 +26,15 @@ class Condition {
 
   List<List> _conds;
 
-  Condition() {
+  Condition([left = null, right = null, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
     _conds = new List<List<String>>();
-  }
-
-  Condition add(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
-    return this.addAnd(left, right, oper, quote);
-  }
-
-  Condition addAnd(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
-    if(null == left) {
-      return this;
+    if(null != left) {
+      this.add(left, right, oper, quote);
     }
-
-    if(left is Map) {
-      left.forEach((k,v) => addAnd(k,v));
-      return this;
-    }
-    List cond = new List();
-    cond.add([Condition.AND, left, right, oper, quote]);
-    _conds.add(cond);
-    return this;
   }
 
-  getAnds() {
-    //TODO: implement
-  }
-
-  Condition addOr(left, [right, oper = Query.EQUAL, quote]) {
-    if(null == left) {
-      return this;
-    }
-
-    if(left is Map) {
-      left.forEach((k,v) => addOr(k,v));
-      return this;
-    }
-
-    _conds.add([Condition.OR, left, right, oper, quote]);
-    return this;
-  }
-
-  getOrs() {
-    //TODO: Implement
+  static Condition create([left = null, right = null, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+    return new Condition(left, right, oper, quote);
   }
 
   static QueryStatement _processCondition(left, [right = null, operator = Query.EQUAL, quote = null]){
@@ -195,23 +161,199 @@ class Condition {
     return statement;
   }
 
+  Condition add(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+    return this.addAnd(left, right, oper, quote);
+  }
+
+  Condition addAnd(left, [right, oper = Query.EQUAL, quote = Condition.QUOTE_LEFT]) {
+    if(null == left) {
+      return this;
+    }
+
+    if(left is Map) {
+      left.forEach((k,v) => addAnd(k,v));
+      return this;
+    }
+    _conds.add([Condition.AND, left, right, oper, quote]);
+    return this;
+  }
+
+  List<QueryStatement> getAnds() {
+    List<QueryStatement> ands = new List<QueryStatement>();
+    for(List cond in _conds) {
+      if(Condition.AND == cond[0]) {
+        ands.add(Condition._processCondition(cond[1], cond[2], cond[3], cond[4]));
+      }
+    }
+    return ands;
+  }
+
+  Condition addOr(left, [right, oper = Query.EQUAL, quote]) {
+    if(null == left) {
+      return this;
+    }
+
+    if(left is Map) {
+      left.forEach((k,v) => addOr(k,v));
+      return this;
+    }
+
+    _conds.add([Condition.OR, left, right, oper, quote]);
+    return this;
+  }
+
+  List<QueryStatement>getOrs() {
+    List<QueryStatement> ors = new List<QueryStatement>();
+    for(List cond in _conds) {
+      if(Condition.OR == cond[0]) {
+        ors.add(Condition._processCondition(cond[1], cond[2], cond[3], cond[4]));
+      }
+    }
+    return ors;
+  }
+
+  Condition andNot(column, value) {
+    return this.addAnd(column, value, Query.NOT_EQUAL);
+  }
+
+  Condition andLike(column, value){
+    return this.addAnd(column, value, Query.LIKE);
+  }
+
+  Condition andNotLike(column, value) {
+    return this.addAnd(column, value, Query.NOT_LIKE);
+  }
+
+  Condition andGreater(column, value) {
+    return this.addAnd(column, value, Query.GREATER_THAN);
+  }
+
+  Condition andGreaterEqual(column, value) {
+    return this.addAnd(column, value, Query.GREATER_EQUAL);
+  }
+
+  Condition andLess(column, value) {
+    return this.addAnd(column, value, Query.LESS_THAN);
+  }
+
+  Condition andLessEqual(column, value) {
+    return this.addAnd(column, value, Query.LESS_EQUAL);
+  }
+
+  Condition andNull(column) {
+    return this.addAnd(column, null);
+  }
+
+  Condition andNotNull(column) {
+    return this.addAnd(column, null, Query.NOT_EQUAL);
+  }
+
+  Condition andBetween(column, from, to) {
+    return this.addAnd(column, [from, to], Query.BETWEEN);
+  }
+
+  Condition andBeginsWith(column, value) {
+    return this.addAnd(column, value, Query.BEGINS_WITH);
+  }
+
+  Condition andEndsWith(column, value) {
+    return this.addAnd(column, value, Query.ENDS_WITH);
+  }
+
+  Condition andContains(column, value) {
+    return this.addAnd(column, value, Query.CONTAINS);
+  }
+
+  Condition orNot(column, value) {
+    return this.addOr(column, value, Query.NOT_EQUAL);
+  }
+
+  Condition orLike(column, value) {
+    return this.addOr(column, value, Query.LIKE);
+  }
+
+  Condition orNotLike(column, value) {
+    return this.addOr(column, value, Query.NOT_LIKE);
+  }
+
+  Condition orGreater(column, value) {
+    return this.addOr(column, value, Query.GREATER_THAN);
+  }
+
+  Condition orGreaterEqual(column, value) {
+    return this.addOr(column, value, Query.GREATER_EQUAL);
+  }
+
+  Condition orLess(column, value) {
+    return this.addOr(column, value, Query.LESS_THAN);
+  }
+
+  Condition orLessEqual(column, value) {
+    return this.addOr(column, value, Query.LESS_EQUAL);
+  }
+
+  Condition orNull(column) {
+    return this.addOr(column, null);
+  }
+
+  Condition orNotNull(column) {
+    return this.addOr(column, null, Query.NOT_EQUAL);
+  }
+
+  Condition orBetween(column, $from, $to) {
+    return this.addOr(column, array($from, $to), Query.BETWEEN);
+  }
+
+  Condition orBeginsWith(column, value) {
+    return this.addOr(column, value, Query.BEGINS_WITH);
+  }
+
+  Condition orEndsWith(column, value) {
+    return this.addOr(column, value, Query.ENDS_WITH);
+  }
+
+  Condition orContains(column, value) {
+    return this.addOr(column, value, Query.CONTAINS);
+  }
+
   QueryStatement getQueryStatement([conn]) {
     if(0 == _conds.length) {
       return null;
     }
+
     int count = 0;
     StringBuffer sb = new StringBuffer();
-    QueryStatement statement = new QueryStatement(conn);
+    QueryStatement statement = new QueryStatement(conn), temp;
+    bool is_first = true, is_second = false;
+
     for(final List<String> cond in this._conds) {
-      if(null == cond) {
+      temp = Condition._processCondition(cond[0], cond[1], cond[2], cond[3]);
+      if(null == temp) {
         continue;
       }
       sb.write("\n\t");
-      //If this is not the first condition, insert the separator
-      if(0 != count) {
-        // sb.write((1 == count && _conds.first().sep == 'OR') )
+      if(is_first) {
+        is_first = false;
+        is_second = true;
+      } else {
+       if(is_second) {
+         if(Condition.OR == _conds[0][0]){
+           sb.write(Condition.OR);
+         }
+         is_second = false;
+       } else {
+         sb.write(cond[0]);
+       }
       }
+      sb.write(temp.getString());
+      statement.addParams(temp.getParams());
+      statement.addIdentifiers(temp.identifiers);
     }
+    statement.setString(sb.toString());
+    return statement;
   }
 
+  String toString() {
+    return getQueryStatement().toString();
+  }
 }
