@@ -121,7 +121,7 @@ class QueryStatement {
     } else {
       for(int x = 0; x < params.length; ++ x) {
         var value = params[x];
-        if (value is int) {
+        if (value is num) {
           continue;
         } else if (value is bool) {
           value = (value as bool) ? 1 : 0;

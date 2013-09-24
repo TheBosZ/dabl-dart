@@ -38,7 +38,7 @@ class Condition {
   }
 
   static QueryStatement _processCondition(left, [right = null, operator = Query.EQUAL, quote = null]){
-    if(left is QueryStatement && !?right && !?operator && !?quote){
+    if(left is QueryStatement && null == right && Query.EQUAL == operator && null == quote){
       return left;
     }
 

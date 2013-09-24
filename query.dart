@@ -479,7 +479,7 @@ class Query {
 
     if (Query.ACTION_UPDATE == this._action) {
       if (this._updateColumnValues.isEmpty) {
-        throw new RuntimeError('Unable to build UPDATE query without update column values');
+        throw new Exception('Unable to build UPDATE query without update column values');
       }
 
       List column_updates = new List();
@@ -645,7 +645,7 @@ class Query {
         statement.setString(table_string);
         break;
       default:
-        throw new RuntimeError('Uknown action "' + this._action + '", cannot build table list');
+        throw new Exception('Uknown action "' + this._action + '", cannot build table list');
     }
     return statement;
   }
@@ -787,7 +787,7 @@ class Query {
     Query q = this;
 
     if (q.getTable().isEmpty) {
-      throw new RuntimeError('No table specified.');
+      throw new Exception('No table specified.');
     }
 
     q.setAction(Query.ACTION_COUNT);
@@ -798,7 +798,7 @@ class Query {
     Query q = this;
 
     if (q.getTable().isEmpty) {
-      throw new RuntimeError('No table specified.');
+      throw new Exception('No table specified.');
     }
 
     q.setAction(Query.ACTION_DELETE);
@@ -809,7 +809,7 @@ class Query {
     Query q = this;
 
     if (q.getTable().isEmpty) {
-      throw new RuntimeError('No table specified.');
+      throw new Exception('No table specified.');
     }
 
     q.setAction(Query.ACTION_SELECT);
@@ -822,7 +822,7 @@ class Query {
     q._updateColumnValues = column_values;
 
     if (q.getTable().isEmpty) {
-      throw new RuntimeError('No table specified.');
+      throw new Exception('No table specified.');
     }
 
     q.setAction(Query.ACTION_UPDATE);
