@@ -1,4 +1,5 @@
 library dabl_query;
+import '../../dabl.dart';
 part 'condition.dart';
 part 'query_statement.dart';
 part 'query_join.dart';

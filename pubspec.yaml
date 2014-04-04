@@ -2,4 +2,4 @@ name: dabl_dart
 description: A sample application
 dependencies:
   dart_ddo:
-    path: ../pdodart
+    path: C:\Users\Nathan\dart\pdodart

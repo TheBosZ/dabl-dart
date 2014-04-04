@@ -1,4 +1,4 @@
-import "database/query/query.dart";
+import "lib/database/query/query.dart";
 void main() {
   Query q = new Query('employees');
   String queryinjection = '\'; delete * from * -- bob';

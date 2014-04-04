@@ -24,7 +24,7 @@ class QueryStatement {
   /**
    * @var DABLPDO
    */
-  String _connection;
+  DABLDDO _connection;
 
   /**
    * @var array
@@ -115,9 +115,9 @@ class QueryStatement {
     return string;
   }
 
-  static String embedParams(String string, List params, [conn = null]) {
-    if (false && null != conn) {
-     // params = $conn->prepareInput($params);
+  static String embedParams(String string, List params, [DABLDDO conn = null]) {
+    if (null != conn) {
+      params = conn.prepareInput(params);
     } else {
       for(int x = 0; x < params.length; ++ x) {
         var value = params[x];

@@ -1,14 +1,7 @@
-library dabl;
-
-import './query/query.dart';
-import '../../pdodart/ddo.dart';
-part './adapter/dabl_ddo.dart';
-
-part 'model.dart';
-
+part of dabl;
 
 class DBManager {
-	static Map<String, String> _connections = new Map<String, String>();
+	static Map<String, DABLDDO> _connections = new Map<String, DABLDDO>();
 	static Map<String, Map<String, String>> _parameters = new Map<String, Map<String, String>>();
 
 	static void addConnection(String conn_name, Map conn_params) {
@@ -48,8 +41,7 @@ class DBManager {
 		return _parameters.keys;
 	}
 
-	//Will actually return a connection, when the class is built
-	static dynamic _connect(String key) {
+	static DABLDDO _connect(String key) {
 		if(_connections.containsKey(key)) {
 			return _connections[key];
 		}
@@ -58,7 +50,7 @@ class DBManager {
 			throw new Exception('Connection "${key}" has not been set');
 		}
 
-		var conn = new DDO();
+		var conn = new DABLDDO.factory(_parameters[key]);
 		return _connections[key] = conn;
 	}
 
