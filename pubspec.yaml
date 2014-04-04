@@ -3,3 +3,5 @@ description: A sample application
 dependencies:
   dart_ddo:
     path: C:\Users\Nathan\dart\pdodart
+  dabl_query:
+    path: C:\Users\Nathan\dart\dabl-query

@@ -1,6 +1,5 @@
 library dabl;
 
-import './database/query/query.dart';
 import 'package:dart_ddo/ddo.dart';
 import 'dart:async';
 import '../packages/dart_ddo/statements/ddo_statement.dart';

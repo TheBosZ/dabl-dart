@@ -48,16 +48,16 @@ abstract class DABLDDO extends DDO {
 			case 'mysql':
 				List<String> parts = new List<String>();
 				if(connectionParams.containsKey('host')){
-					parts.add(connectionParams['host']);
+					parts.add('host=${connectionParams['host']}');
 				}
 				if(connectionParams.containsKey('port')){
-					parts.add(connectionParams['port']);
+					parts.add('port=${connectionParams['port']}');
 				}
 				if(connectionParams.containsKey('unix_socket')){
-					parts.add(connectionParams['unix_socket']);
+					parts.add('unix_socket=${connectionParams['unix_socket']}');
 				}
 				if(connectionParams.containsKey('dbname')){
-					parts.add(connectionParams['dbname']);
+					parts.add('dbname=${connectionParams['dbname']}');
 				}
 				parts.map((String f) => f.replaceAll(';', r'\;'));
 				String dsn = 'mysql:${parts.join(';')}';
@@ -100,26 +100,6 @@ abstract class DABLDDO extends DDO {
 		return "'";
 	}
 
-	Object prepareInput(Object val) {
-		if(val is List) {
-			return val.map((v) => prepareInput(v));
-		}
-
-		if(val is num) {
-			return val;
-		}
-
-		if(val is bool) {
-			return val ? 1 : 0;
-		}
-
-		if(val == null) {
-			return 'NULL';
-		}
-
-		return quote(val);
-	}
-
 	String ignoreCase(String s);
 
 	String ignoreCaseInOrderBy(String s) {
@@ -131,21 +111,6 @@ abstract class DABLDDO extends DDO {
 	String subString(String s, int pos, int len);
 
 	String strLength(String s);
-
-	Object quoteIdentifier(Object val) {
-		if(val is List) {
-			return val.map((v) => quoteIdentifier(v));
-		}
-
-		if(val is String) {
-			if (val.contains(new RegExp(r'[" (\*]'))) {
-				return val;
-			}
-			return '"${val.replaceAll('.', '","')}"';
-		}
-
-		return val;
-	}
 
 	int _getIdMethod() {
 		return DABLDDO.ID_METHOD_AUTOINCREMENT;

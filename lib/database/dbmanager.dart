@@ -8,7 +8,7 @@ class DBManager {
 		_parameters[conn_name] = conn_params;
 	}
 
-	static dynamic getConnection([String db_name = null]){
+	static DABLDDO getConnection([String db_name = null]){
 		if(null == db_name) {
 			db_name = _parameters.keys.first;
 		}
