@@ -1,6 +1,6 @@
 part of dabl;
 
-class Model {
+abstract class Model {
 
 	static const String COLUMN_TYPE_CHAR = 'CHAR';
     static const String COLUMN_TYPE_VARCHAR = 'VARCHAR';
@@ -160,9 +160,7 @@ class Model {
 	 */
 	List<String> _validationErrors = new List<String>();
 
-	String toString() {
-		return "${this.runtimeType.toString()} ${getPrimaryKeyValues().join("-")}";
-	}
+	String toString();
 
 	static Object create() {
 		throw new UnimplementedError('Create() not implemented yet');
@@ -402,23 +400,89 @@ class Model {
 		throw new UnimplementedError();
 	}
 
-	static List<Model> fromResult(DDOStatement result, [Object class_name = null, bool use_pool = null]) {
-		if(null == class_name) {
-			class_name = '';
-		}
-
-		if(null == use_pool) {
-			use_pool = _poolEnabled;
-		}
-
-		List<Model> objects = new List<Model>();
-		if(class_name is List) {
-
-		}
+	static Future<List<Model>> fromResult(DDOStatement result, [bool use_pool = null]) {
+		throw new UnsupportedError('fromResult needs to be overridden in the child class');
 	}
 
-	List<Object> getPrimaryKeyValues() {
-		throw new UnimplementedError('getPrimaryKeyValues() not implemented yet');
+	bool fromNumericResultArray(List values, int startCol);
+
+	bool fromAssociativeResultArray(Map<String, Object> values);
+
+	static int doDelete(Query q, [bool flushPool = true]) {
+		throw new UnsupportedError('doDelete needs to be overridden in the child class');
 	}
 
+	static List<Model> doUpdate(List values, [Query q = null]) {
+		throw new UnsupportedError('doUpdate needs to be overridden in the child class');
+	}
+
+	static int setInsertBatchSize([int size = 500]){
+		throw new UnsupportedError('setInsertBatchSize needs to be overridden in the child class');
+	}
+
+	static int insertBatch() {
+		throw new UnsupportedError('insertBatch needs to be overridden in the child class');
+	}
+
+	Model queueForInsert();
+
+	Model copy();
+
+	bool isModified() => _modifiedColumns.isNotEmpty;
+
+	bool isColumnModified(String columnName);
+
+	List<String> getModifiedColumns() => _modifiedColumns;
+
+	Model setColumnValue(String columnName, Object value, [String columnType = null]);
+
+	Model resetModified();
+
+	Model fromArray(Map<String, Object> array);
+
+	Map<String, Object> toArray();
+
+	Map<String, Object> jsonSerialize();
+
+	Model setCacheResults([bool value = true]);
+
+	bool getCacheResults() => _cacheResults;
+
+	bool hasPrimaryKeyValues();
+
+	List<Object> getPrimaryKeyValues();
+
+	bool validate();
+
+	List<String> getValidationErrors() => _validationErrors;
+
+	int delete();
+
+	int save();
+
+	int archive();
+
+	bool isNew() => _isNew;
+
+	Model setNew(bool isNew);
+
+	bool isDirty() => _isDirty;
+
+	Model setDirty(bool dirty);
+
+	Model castInts();
+
+	int _insert();
+
+	int _update();
+
+	Query _getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]);
+
+	static DABLDDO getConnection() {
+		throw new UnsupportedError('getConnection needs to be overridden in child class');
+	}
+
+	static Model retrieveByPK(Object id) {
+		throw new UnsupportedError('retrieveByPK needs to be overridden in child class');
+	}
 }
