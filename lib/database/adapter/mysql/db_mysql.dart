@@ -98,7 +98,18 @@ class DBMySQL extends DABLDDO {
 		return exec("ROLLBACK TO SAVEPOINT LEVEL${_transactionDepth}");
 	}
 
-	Object getDatabaseSchema() {
-		throw new UnimplementedError('Not implemented yet');
+	Future<Database> getDatabaseSchema() {
+		MysqlSchemaParser parser = new MysqlSchemaParser(this);
+		Database db = new Database(getDBName());
+		MysqlPlatform platform = new MysqlPlatform(this);
+		platform.setDefaultTableEngine('InnoDB');
+		db.setPlatform(platform);
+		Completer c = new Completer();
+		parser.parse(db).then((_) {
+			db.doFinalInitialization();
+			c.complete(db);
+		});
+
+		return c.future;
 	}
 }

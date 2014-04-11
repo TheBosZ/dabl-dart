@@ -6,3 +6,5 @@ dependencies:
   dart_ddo:
     path: C:\Users\Nathan\dart\pdodart
   intl: any
+  database_reverse_engineer:
+    path: ..\database_reverse_engineer

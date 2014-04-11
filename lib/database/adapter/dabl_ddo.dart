@@ -146,5 +146,5 @@ abstract class DABLDDO extends DDO {
 
 	String random([int seed = null]);
 
-	Object getDatabaseSchema();
+	Future<Database> getDatabaseSchema();
 }
