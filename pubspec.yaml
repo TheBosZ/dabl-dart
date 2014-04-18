@@ -1,10 +1,9 @@
-name: dabl_dart
-description: A sample application
+name: dabl
+description: A port of the Dabl ORM to Dart.
 dependencies:
   dabl_query:
     path: C:\Users\Nathan\dart\dabl-query
-  dart_ddo:
-    path: C:\Users\Nathan\dart\pdodart
-  intl: any
   database_reverse_engineer:
-    path: ..\database_reverse_engineer
+    path: ../database_reverse_engineer
+  ddo: any
+  intl: any
