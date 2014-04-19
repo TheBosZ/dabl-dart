@@ -400,7 +400,7 @@ abstract class Model {
 		throw new UnimplementedError();
 	}
 
-	static Future<List<Model>> fromResult(DDOStatement result, [bool use_pool = null]) {
+	static Future<List<Model>> fromResult(Future<DDOStatement> result, [List<String> classes = null, bool use_pool = null]) {
 		throw new UnsupportedError('fromResult needs to be overridden in the child class');
 	}
 

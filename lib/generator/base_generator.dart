@@ -1,4 +1,4 @@
-part of dabl;
+part of dabl_generator;
 
 abstract class BaseGenerator {
 	Map<String, Object> _options = {
@@ -256,7 +256,8 @@ abstract class BaseGenerator {
 
 	BaseModelQueryGenerator getBaseModelQueryGenerator() => new BaseModelQueryGenerator();
 
-	void generateModels([List<String> tableNames = null]) {
+	Future<List<String>> generateModels([List<String> tableNames = null]) {
+		Completer c = new Completer();
 		initialize().then((_) {
 			if(tableNames == null) {
 				tableNames = getTableNames();
@@ -273,21 +274,46 @@ abstract class BaseGenerator {
 			String modelPath = _options['model_path'];
 			ensureDirectoryExists(baseModelPath);
 			ensureDirectoryExists(modelPath);
-
+			List<String> modelFiles = new List<String>();
 			for(String tableName in tableNames) {
-				String className = getModelName(tableName);
-				String baseName =  "${baseModelPath}base${className}.dart";
+				String className = StringFormat.variable(getModelName(tableName));
+				String baseName =  "${baseModelPath}base_${className}.dart";
 				getBaseModel(tableName).then((String contents){
 					File output = new File(baseName);
 	            	output.writeAsStringSync(contents);
 				});
+
 				String modelFilePath = "${modelPath}${className}.dart";
 				File modelFile = new File(modelFilePath);
 				if(!modelFile.existsSync()) {
 					modelFile.writeAsStringSync(getModel(tableName));
 				}
+				modelFiles.add(baseName);
+				modelFiles.add(modelFilePath);
+
 			}
+			c.complete(modelFiles);
 		});
+		return c.future;
+	}
+
+	void generateProjectFiles() {
+		generateModels().then((List<String> fileNames) {
+			ProjectGenerator pg = new ProjectGenerator();
+			pg.baseGenerator = this;
+			fileNames.sort();
+			pg.fileNames = fileNames;
+			String projName = StringFormat.variable(getProjectName());
+			String projectContents = pg.getFileContents();
+			File projFile = new File('${projName}.dart');
+			projFile.writeAsStringSync(projectContents);
+
+			File pubFile = new File('pubspec.yaml');
+			PubSpecGenerator psg = new PubSpecGenerator();
+			psg.baseGenerator = this;
+			pubFile.writeAsStringSync(psg.getFileContents());
+		});
+
 	}
 
 	void ensureDirectoryExists(String directory) {

@@ -1,4 +1,4 @@
-part of dabl;
+part of dabl_generator;
 
 class BaseModelGenerator extends FileGenerator {
 	String className;
@@ -255,22 +255,18 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Convenience functon for ${className}.get${methodName}
 	 *
-	 * final because get${methodName} should be overridden instead to ensure
-	 * consistent behavior
 	 * @see ${className}.get${methodName}
 	 */
-	final ${field.getDartType()} get${rawMethodName}(${params}) {
+	${field.getDartType()} get${rawMethodName}(${params}) {
 		return get${methodName}(${paramVars});
 	}
 
 	/**
 	 * Convenience function for ${className}.set${methodName}
 	 * 
-	 * final because set${methodName} should be overridden instead to ensure
-	 * consistent behavior
 	 * @see ${className}.set${methodName}
 	 */
-	final ${className} set${rawMethodName}(${field.getDartType()} value) {
+	${className} set${rawMethodName}(${field.getDartType()} value) {
 		return set${methodName}(value);
 	}
 ''');
@@ -528,6 +524,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 				if(!usedMethods.contains('get${toClassName}')) {
 					usedMethods.add('get${toClassName}');
 					result.write('''
+
 		/**
 		 * Returns a ${toTable} object with a ${toColumn}
 		 * that matches this.${fromColumn}
@@ -540,6 +537,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 				if(!usedMethods.contains('set${toClassName}')) {
 					usedMethods.add('set${toClassName}');
 					result.write('''
+
 		${className} set${toClassName}([${toClassName} ${lcToClassName} = null]) {
 			return set${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}(${lcToClassName});
 		}
@@ -548,6 +546,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			}
 		usedMethods.add('doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}');
 		result.write('''
+
 	static List<${className}> doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;
@@ -576,6 +575,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		}
 		usedMethods.add('doSelectJoinAll');
 		result.write('''
+
 	static List<${className}> doSelectJoinAll([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;

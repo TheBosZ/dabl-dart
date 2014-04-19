@@ -1,4 +1,4 @@
-part of dabl;
+part of dabl_generator;
 
 class ModelQueryGenerator extends FileGenerator {
 	BaseGenerator baseGenerator;

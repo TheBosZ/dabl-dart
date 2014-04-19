@@ -1,4 +1,4 @@
-part of dabl;
+part of dabl_generator;
 
 class DefaultGenerator extends BaseGenerator {
   DefaultGenerator(String connectionName) : super(connectionName);
