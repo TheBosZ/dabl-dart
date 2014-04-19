@@ -1,11 +1,12 @@
 part of dabl;
 
-class BaseModelGenerator {
+class BaseModelGenerator extends FileGenerator {
 	String className;
 	String tableName;
 	List<Column> fields;
 	List<Column> PKs;
 	List<ForeignKey> fromTable;
+	List<ForeignKey> toTable;
 	Column PK;
 	bool autoIncrement;
 	String get baseClassName => "base${className}";
@@ -43,8 +44,13 @@ class BaseModelGenerator {
 
 	String getFileContents() {
 		fromTable.sort((ForeignKey l, ForeignKey r) => l.getForeignTableName().compareTo(r.getForeignTableName()));
+		toTable.sort((ForeignKey l, ForeignKey r) => l.getForeignTableName().compareTo(r.getForeignTableName()));
 
 		StringBuffer result = new StringBuffer('''
+part of ${baseGenerator.getProjectName()};
+
+''');
+		result.write('''
 abstract class ${baseClassName} extends ApplicationModel {
 
 ''');
@@ -95,7 +101,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * string name of the primary key column
 	 */
-	static const String _primaryKey = '${PK.getName()}';
+	static const String _primaryKey = '${PK != null ? PK.getName() : ''}';
 
 	/**
 	 * true if primary key is an auto-increment column
@@ -184,53 +190,64 @@ abstract class ${baseClassName} extends ApplicationModel {
             	params = "[String format = ${defaultValue}]";
             	paramVars = 'format';
             }
-            usedMethods.add('get${methodName}');
+            String cacheMethodName = 'get${methodName}';
             String rawMethodName = StringFormat.ucFirst(field.getName());
-            result.write('''
+            if(!usedMethods.contains(cacheMethodName)) {
+	            usedMethods.add(cacheMethodName);
+	            result.write('''
 			
 	/** 
 	 * Gets the value of the ${field.getName()} field
 	 */
-	${field.getDartType()} get${methodName}(${params}) {
+	${field.getDartType()} ${cacheMethodName}(${params}) {
 ''');
-            if(field.isTemporalType()) {
-            	result.write('''
+	            if(field.isTemporalType()) {
+	            	result.write('''
 		if(null == ${privateName} || null == ${paramVars}) {
 			return ${privateName};
 		}
 ''');
-	            if(field.getType() == Model.COLUMN_TYPE_INTEGER_TIMESTAMP) {
-	            	result.write('''
+		            if(field.getType() == Model.COLUMN_TYPE_INTEGER_TIMESTAMP) {
+		            	result.write('''
 		DateFormat formatter = new DateFormat(format);
 		return formatter.format(${privateName};
 ''');
-            	} else {
-            		result.write('''
+	            	} else {
+	            		result.write('''
 		if(0 == ${privateName}.indexOf('0000-00-00')) {
 			return null;
 		}
 		DateFormat formatter = new DateFormat(format);
 		return formatter.format(${privateName});
 ''');
-            	}
-            } else {
-            	result.write('''
+	            	}
+	            } else {
+	            	result.write('''
 		return ${privateName};
 ''');
             }
-            usedMethods.add('set${methodName}');
+
             result.write('''
 	}
+''');
+            }
+            String cacheSetMethod = 'set${methodName}';
+            if(!usedMethods.contains(cacheSetMethod)) {
+            	usedMethods.add(cacheSetMethod);
+
+            	result.write('''
 
 	/**
 	 * Sets the value of the ${field.getName()} field
 	 */
 
-	${className} set${methodName}(${field.getDartType()} value) {
+	${className} ${cacheSetMethod}(${field.getDartType()} value) {
 		return setColumnValue('${field.getName()}', value, Model.COLUMN_TYPE_${field.getType()});
 	}
 ''');
-            if(rawMethodName.toLowerCase() != methodName.toLowerCase()) {
+            }
+            if(rawMethodName.toLowerCase() != methodName.toLowerCase() &&
+            		!usedMethods.contains('get${rawMethodName}')) {
             	usedMethods.add('get${rawMethodName}');
             	usedMethods.add('set${rawMethodName}');
             	result.write('''
@@ -420,7 +437,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			if(namedId) {
 				usedMethods.add('set${StringFormat.titleCase(fromColumnClean)}');
 				result.write('''
-		
+
 	${className} set${StringFormat.titleCase(fromColumnClean)}([${toClassName} ${lcToClassName} = null]) {
 		return set${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}(${lcToClassName});
 	}
@@ -435,7 +452,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		} else {
 			if (${lcToClassName}.get${toColumn} == null) {
 				throw new Exception('Cannot connect a ${toClassName} without a ${toColumn}');
-			} 
+			}
 			set${fromColumnMethodName}(${lcToClassName}.get${toColumn}());
 		}
 ''');
@@ -444,7 +461,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 
 			if (getCacheResults() != null) {
 				${fkProperty} = ${lcToClassName};
-			}	
+			}
 ''');
 			}
 			result.write('''
@@ -492,7 +509,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		if (getCacheResults()) {
 			${fkProperty} = result;
 		}
-		
+
 		return result;
 ''');
 			}
@@ -531,7 +548,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			}
 		usedMethods.add('doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}');
 		result.write('''
-	static List<${className}> doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}([Query q = null, String joinType = Query.LEFT_JOIN) {
+	static List<${className}> doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;
 		String alias = q.getAlias();
@@ -547,19 +564,19 @@ abstract class ${baseClassName} extends ApplicationModel {
 		}
 
 		String toTable = ${toClassName}.getTableName();
-		q.join(toTable, "\${thisTable}.${fromColumn} = \${toTable}.${toColumn}, joinType);
+		q.join(toTable, "\${thisTable}.${fromColumn} = \${toTable}.${toColumn}\", joinType);
 		for (String column in ${toClassName}.getColumns()) {
 			columns.add(column);
 		}
 		q.setColumns(columns);
 
 		return ${className}.doSelect(q, ['${toClassName}']);
-	} 
+	}
 ''');
 		}
 		usedMethods.add('doSelectJoinAll');
 		result.write('''
-	static List<${className}> doSelectJoinAll([Query q = null, String joinType = Query.LEFT_JOIN) {
+	static List<${className}> doSelectJoinAll([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;
 		List<String> classes = new List<String>();
@@ -574,6 +591,8 @@ abstract class ${baseClassName} extends ApplicationModel {
 				columns = ${className}.getColumns();
 			}
 		}
+
+		String toTable;
 ''');
 		for(ForeignKey r in fromTable) {
 			String totable = r.getForeignTableName();
@@ -584,7 +603,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			String fromColumn = localColumns.first;
 			result.write('''
 
-		String toTable = ${toClassName}.getTableName();
+		toTable = ${toClassName}.getTableName();
 		q.join(toTable, "\${thisTable}.${fromColumn} = \${toTable}.${toColumn}", joinType);
 		for(String column in ${toClassName}.getColumns()) {
 			columns.add(column);
@@ -597,6 +616,221 @@ abstract class ${baseClassName} extends ApplicationModel {
 		q.setColumns(columns);
 		return ${className}.doSelect(q, classes);
 	}
+''');
+		Map<String, int> fromTableList = new Map<String, int>();
+		for(ForeignKey r in toTable){
+			String fromTable = r.getTableName();
+
+			if(fromTableList.containsKey(fromTable)) {
+				++fromTableList[fromTable];
+			} else {
+				fromTableList[fromTable] = 1;
+			}
+
+			String fromClassName = baseGenerator.getModelName(fromTable);
+			List<String> localColumns = r.getLocalColumns();
+			String fromColumn = localColumns.first;
+			List<String> foreignColumns = r.getForeignColumns();
+			String toColumn = foreignColumns.first;
+			String toTable = r.getForeignTableName();
+			String tcFromColumn = StringFormat.titleCase(fromColumn);
+			String tcFromClassName = StringFormat.titleCase(fromClassName);
+			String cacheProperty = "_${fromClassName}sRelatedBy${tcFromColumn}_c";
+			String cacheGetMethodNameQuery = "get${tcFromClassName}sRelatedBy${tcFromColumn}Query";
+			String cacheCountMethodName = "count${tcFromClassName}sRelatedBy${tcFromColumn}";
+			String cacheDeleteMethodName = "delete${tcFromClassName}sRelatedBy${tcFromColumn}";
+			String cacheGetMethodName = "get${tcFromClassName}sRelatedBy${tcFromColumn}";
+
+			if(!usedMethods.contains(cacheGetMethodNameQuery)) {
+				usedMethods.add(cacheGetMethodNameQuery);
+				result.write('''
+
+	/**
+	 * Returns a Query for selecting ${fromTable} objects(rows) from the ${fromTable} table
+	 * with a ${fromColumn} that matches this.${toColumn}.
+	 */
+	Query ${cacheGetMethodNameQuery}([Query q = null]) {
+		return getForeignObjectsQuery('${fromTable}', '${fromColumn}', '${toColumn}', q);
+	}
+''');
+			}
+			if(!usedMethods.contains(cacheCountMethodName)) {
+				usedMethods.add(cacheCountMethodName);
+				result.write('''
+
+	/**
+	 * Returns the count of ${fromClassName} objects(rows) from the ${fromTable} table
+	 * with a ${fromColumn} that matches this.${toColumn}.
+	 */
+	int ${cacheCountMethodName}([Query q = null]) {
+		if(null == get${toColumn}()) {
+			return 0;
+		}
+		return ${fromClassName}.doCount(get${StringFormat.titleCase(fromClassName)}sRelatedBy${StringFormat.titleCase(fromColumn)}Query(q));
+	}
+''');
+			}
+			if(!usedMethods.contains('SET_CACHE_VARIABLE${cacheProperty}')) {
+				usedMethods.add('SET_CACHE_VARIABLE${cacheProperty}');
+				result.write('''
+
+	List<${fromClassName}> ${cacheProperty} = new List<${fromClassName}>();
+''');
+			}
+			if(!usedMethods.contains(cacheDeleteMethodName)) {
+				usedMethods.add(cacheDeleteMethodName);
+				result.write('''
+			
+	/**
+	 * Deletes the ${fromTable} objects(rows) from the ${fromTable} table
+	 * with a ${fromColumn} that matches this.${toColumn}
+	 */
+	int ${cacheDeleteMethodName}([Query q = null]) {
+		if (null == get${toColumn}()) {
+			return 0;
+		}
+		${cacheProperty}.clear(); //Clear cached objects
+		return ${fromClassName}.doDelete(get${tcFromClassName}sRelatedBy${tcFromColumn}Query(q));
+	}
+''');
+			}
+			if(!usedMethods.contains(cacheGetMethodName)) {
+				usedMethods.add(cacheGetMethodName);
+				result.write('''
+
+	/**
+	 * Returns a list of ${fromClassName} objects with a ${fromColumn}
+	 * that matches this.${toColumn}.
+	 * When first called, this method will cache the result.
+	 * After that, if this.${toColumn} is not modified, the
+	 * method will return the cached result instead of querying the database
+	 * a second time (for performance purposes).
+	 */
+	List<${fromClassName}> ${cacheGetMethodName}([Query q = null]) {
+		if (null == get${toColumn}()) {
+			return new List<${fromClassName}>();
+		}
+
+		if (
+			null == q &&
+			getCacheResults() &&
+			${cacheProperty}.isNotEmpty &&
+			!isColumnModified('${toColumn}')
+		) {
+			return ${cacheProperty};
+		}
+
+		List<${fromClassName}> result = ${fromClassName}.doSelect(${cacheGetMethodNameQuery}(q));
+
+		if (getCacheResults() && q != null) { //We can't cache when sent a Query object
+			${cacheProperty} = result;
+		}
+		return result;
+	}
+''');
+			}
+		} //end for foreignkeys from table
+		for(ForeignKey r in toTable) {
+			String fromTable = r.getTableName();
+			if(fromTableList.containsKey(fromTable) && fromTableList[fromTable] > 1) {
+				continue;
+			}
+
+			String fromClassName = baseGenerator.getModelName(fromTable);
+			List<String> localColumns = r.getLocalColumns();
+			String fromColumn = localColumns.first;
+			List<String> foreignColumns = r.getForeignColumns();
+			String toColumn = foreignColumns.first;
+			String toTable = r.getForeignTableName();
+
+			String tcFromClassName = StringFormat.titleCase(fromClassName);
+			String tcFromColumn = StringFormat.titleCase(fromColumn);
+
+			String cacheGetMethod = "get${tcFromClassName}s";
+			String cacheGetQueryMethod = "get${tcFromClassName}sQuery";
+			String cacheDeleteMethod = "delete${tcFromClassName}s";
+			String cacheCountMethod = "count${tcFromClassName}s";
+
+			if(!usedMethods.contains(cacheGetMethod)) {
+				usedMethods.add(cacheGetMethod);
+				result.write('''
+
+	/**
+	 * Convenience function for ${className}.get${fromClassName}sRelatedBy${fromColumn}
+	 */
+	${fromClassName} ${cacheGetMethod}([Object extra = null]) {
+		return get${tcFromClassName}sRelatedBy${tcFromColumn}(extra);
+	}
+''');
+			}
+
+			if(!usedMethods.contains(cacheGetQueryMethod)) {
+				usedMethods.add(cacheGetQueryMethod);
+				result.write('''
+
+	/**
+	 * Convenience function for ${className}.get${fromClassName}sRelatedBy($fromColumn}Query
+	 */
+	Query ${cacheGetQueryMethod}([Query q = null]) {
+		return get${fromClassName}sRelatedBy${fromColumn}Query(q);
+	}
+''');
+			}
+
+			if(!usedMethods.contains(cacheDeleteMethod)) {
+				usedMethods.add(cacheDeleteMethod);
+				result.write('''
+
+	/**
+	 * Convenience function for ${className}.delete($fromClassName}sRelatedBy${tcFromColumn}
+	 */
+	int ${cacheDeleteMethod}([Query q = null]) {
+		return delete${fromClassName}sRelatedBy${tcFromColumn}(q);
+	}
+''');
+			}
+
+			if(!usedMethods.contains(cacheCountMethod)) {
+				usedMethods.add(cacheCountMethod);
+				result.write('''
+
+	/**
+	 * Convenience function for ${className}.count${tcFromClassName}sRelatedBy${fromColumn}
+	 */
+	int ${cacheCountMethod}([Query q = null]) {
+		return count${tcFromClassName}sRelatedBy${tcFromColumn}(q);
+	}
+''');
+			}
+		} //end for foreignkeys to table
+		result.write('''
+
+	/**
+	 * Returns true if the column values validate
+	 */
+	bool validate() {
+		_validationErrors = new List<String>();
+''');
+		for(Column field in fields) {
+			if(
+				field.isNotNull() &&
+				!field.isAutoIncrement() &&
+				field.getDefaultValue() == null &&
+				!field.isPrimaryKey() &&
+				!(['created', 'updated'].contains(field.getName()))
+			) {
+				result.write('''
+		if (null == get${field.getName()}()) {
+			_validationErrors.add('${field.getName()} must not be null');
+		}
+''');
+
+			}
+		}
+		result.write('''
+		return _validationErrors.isEmpty;
+	}
+}
 ''');
 		return result.toString();
 	}

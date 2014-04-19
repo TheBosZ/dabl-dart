@@ -180,11 +180,13 @@ abstract class BaseGenerator {
 
 	String getControllerFileName(String tableName) => "${getControllerName(tableName)}.dart";
 
+	String getProjectName() => "${getDBName()}Project";
+
 	Future<String> getBaseModel(String tableName) {
 		Completer c = new Completer();
 		String className = getModelName(tableName);
 		initialize().then((bool result) {
-		List<Column> fields = getColumns(tableName);
+			List<Column> fields = getColumns(tableName);
 			DABLDDO conn = DBManager.getConnection(connectionName);
 			bool autoIncrement = false;
 			List<Column> PKs = new List<Column>();
@@ -205,7 +207,7 @@ abstract class BaseGenerator {
 				autoIncrement = false;
 			}
 
-			BaseModelGenerator bmg = new BaseModelGenerator();
+			BaseModelGenerator bmg = getBaseModelGenerator();
 			bmg.className = className;
 			bmg.fields = fields;
 			bmg.tableName = tableName;
@@ -215,9 +217,90 @@ abstract class BaseGenerator {
 			bmg.conn = conn;
 			bmg.connectionName = connectionName;
 			bmg.fromTable = getForeignKeysFromTable(tableName);
+			bmg.toTable = getForeignKeysToTable(tableName);
 			bmg.baseGenerator = this;
+
 			c.complete(bmg.getFileContents());
 		});
 		return c.future;
+	}
+
+	BaseModelGenerator getBaseModelGenerator() => new BaseModelGenerator();
+
+	String getModel(String tableName) {
+		ModelGenerator mg = getModelGenerator();
+		mg.baseGenerator = this;
+		mg.className = getModelName(tableName);
+		return mg.getFileContents();
+	}
+
+	ModelGenerator getModelGenerator() => new ModelGenerator();
+
+	String getModelQuery(String tableName) {
+		ModelQueryGenerator mqg = getModelQueryGenerator();
+		mqg.baseGenerator = this;
+		mqg.modelName = getModelName(tableName);
+		return mqg.getFileContents();
+	}
+
+	ModelQueryGenerator getModelQueryGenerator() => new ModelQueryGenerator();
+
+	Future<String> getBaseModelQuery(String tableName) {
+		Completer c = new Completer();
+		initialize().then((_){
+			BaseModelQueryGenerator mbqg = getBaseModelQueryGenerator();
+			c.complete(mbqg.getFileContents());
+		});
+		return c.future;
+	}
+
+	BaseModelQueryGenerator getBaseModelQueryGenerator() => new BaseModelQueryGenerator();
+
+	void generateModels([List<String> tableNames = null]) {
+		initialize().then((_) {
+			if(tableNames == null) {
+				tableNames = getTableNames();
+			} else if(tableNames.isEmpty) {
+				return;
+			}
+			if(!_options.containsKey('base_model_path') || _options['base_model_path'] == null) {
+				throw new Exception('base_mode_path not defined');
+			}
+			if(!_options.containsKey('model_path') || _options['model_path'] == null) {
+				throw new Exception('model_path not defined');
+			}
+			String baseModelPath = _options['base_model_path'];
+			String modelPath = _options['model_path'];
+			ensureDirectoryExists(baseModelPath);
+			ensureDirectoryExists(modelPath);
+
+			for(String tableName in tableNames) {
+				String className = getModelName(tableName);
+				String baseName =  "${baseModelPath}base${className}.dart";
+				getBaseModel(tableName).then((String contents){
+					File output = new File(baseName);
+	            	output.writeAsStringSync(contents);
+				});
+				String modelFilePath = "${modelPath}${className}.dart";
+				File modelFile = new File(modelFilePath);
+				if(!modelFile.existsSync()) {
+					modelFile.writeAsStringSync(getModel(tableName));
+				}
+			}
+		});
+	}
+
+	void ensureDirectoryExists(String directory) {
+		Directory dir = new Directory(directory);
+		if(!dir.existsSync()) {
+			dir.createSync(recursive: true);
+		}
+		if(!dir.existsSync()) {
+			throw new Exception('could not create directory "${directory}"');
+		}
+	}
+
+	void setOptions(Map<String, Object> options) {
+		_options.addAll(options);
 	}
 }
