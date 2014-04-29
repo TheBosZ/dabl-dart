@@ -72,7 +72,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Cache of objects retrieved from the database
 	 */
-	static List<${className}> _instancePool = new List<${className}>();
+	static Map<String, ${className}> _instancePool = new Map<String, ${className}>();
 
 	static int _instancePoolCount = 0;
 
@@ -210,7 +210,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		            if(field.getType() == Model.COLUMN_TYPE_INTEGER_TIMESTAMP) {
 		            	result.write('''
 		DateFormat formatter = new DateFormat(format);
-		return formatter.format(${privateName};
+		return formatter.format(DateTime.parse(${privateName}));
 ''');
 	            	} else {
 	            		result.write('''
@@ -218,7 +218,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			return null;
 		}
 		DateFormat formatter = new DateFormat(format);
-		return formatter.format(${privateName});
+		return formatter.format(DateTime.parse(${privateName}));
 ''');
 	            	}
 	            } else {
@@ -241,7 +241,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Sets the value of the ${field.getName()} field
 	 */
 
-	${className} ${cacheSetMethod}(${field.getDartType()} value) {
+	${className} ${cacheSetMethod}(String value) {
 		return setColumnValue('${field.getName()}', value, Model.COLUMN_TYPE_${field.getType()});
 	}
 ''');
@@ -281,16 +281,46 @@ abstract class ${baseClassName} extends ApplicationModel {
 		return DBManager.getConnection('${connectionName}');
 	}
 
+	static ${className} create() => new ${className}();
+
+	static String getTableName() =>  ${baseClassName}._tableName;
+
+	static List<String> getColumnNames() => ${baseClassName}._columnNames;
+
+	static List<String> getColumns() => ${baseClassName}._columns;
+
+	static Map<String, String> getColumnTypes() => ${baseClassName}._columnTypes;
+
+	static String getColumnType(String columnName) => ${baseClassName}._columnTypes[${baseClassName}.normalizeColumnName(columnName)];
+
+	static List<String> _columnsCache = new List<String>();
+
+	static bool hasColumn(String columnName) {
+		
+		if (null == _columnsCache) {
+			_columnsCache = ${baseClassName}._columnNames.map((String s) => s.toLowerCase()).toList();
+		}
+		return _columnsCache.contains(${baseClassName}.normalizeColumnName(columnName).toLowerCase());
+	}
+
+	static List<String> getPrimaryKeys() => ${baseClassName}._primaryKeys;
+
+	static String getPrimaryKey() => ${baseClassName}._primaryKey;
+
+	static bool isAutoIncrement() => ${baseClassName}._isAutoIncrement;
+
+	static String normalizeColumnName(String columnName) => Model.normalizeColumnName(columnName);
+
 	/**
 	 * Searches the database for a row with the ID(primary key) that matches
 	 * the one input.
 	 */
-	static ${className} retrieveByPK(${ PKs.isNotEmpty && PKs.length == 1 ? "${PKs.first.getDartType()} ${StringFormat.variable(PKs.first.getName())}" : 'Object the_pk'}) {
+	static Future<${className}> retrieveByPK(${ PKs.isNotEmpty && PKs.length == 1 ? "${PKs.first.getDartType()} ${StringFormat.variable(PKs.first.getName())}" : 'Object the_pk'}) {
 ''');
 		if(PKs.length > 1) {
 			result.write("\t\tthrow new Exception('This table was more than one primary key. Use retrieveByPKs() instead');\n");
 		} else {
-			result.write("\t\treturn ${className}.retrieveByPKs(${PKs.isNotEmpty && PKs.length == 1 ? StringFormat.variable(PKs.first.getName()) : 'the_pk'});\n");
+			result.write("\t\treturn ${baseClassName}.retrieveByPKs(${PKs.isNotEmpty && PKs.length == 1 ? StringFormat.variable(PKs.first.getName()) : 'the_pk'});\n");
 		}
 		result.write('''
 	}
@@ -299,11 +329,11 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Searches the database for a row with the primary keys that match
 	 * the ones input
 	 */
-	static ${className} retrieveByPKs(''');
+	static Future<${className}> retrieveByPKs(''');
 		result.write(PKs.map((Column v) => "${v.getDartType()} ${StringFormat.variable(v.getName())}").join(', '));
 		result.write(') {\n');
 		if(PKs.length == 0) {
-			result.write("\t\tthrow new Exception('This table does not have any primary keys);\n");
+			result.write("\t\tthrow new Exception('This table does not have any primary keys');\n");
 		} else {
 			for(Column v in PKs) {
 				result.write('''
@@ -313,8 +343,8 @@ abstract class ${baseClassName} extends ApplicationModel {
 ''');
 			}
 			result.write('''
-		if(${className}._poolEnabled) {
-			${className} poolInstance = ${className}.retrieveFromPool(''');
+		if(${baseClassName}._poolEnabled) {
+			${className} poolInstance = ${baseClassName}.retrieveFromPool(''');
 			if(1 == PKs.length) {
 				result.write(StringFormat.variable(PK.getName()));
 			} else {
@@ -322,7 +352,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			}
 			result.write(''');
 			if(null != poolInstance) {
-				return poolInstance;
+				return new Future.value(poolInstance);
 			}
 		}
 		Query q = new Query();
@@ -330,7 +360,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			for(Column v in PKs) {
 				result.write("\t\tq.add('${v.getName()}', ${StringFormat.variable(v.getName())});\n");
 			}
-			result.write("\n\t\treturn ${className}.doSelectOne(q);");
+			result.write("\n\t\treturn ${baseClassName}.doSelectOne(q);");
 		}
 		result.write("\n\t}\n");
 
@@ -341,17 +371,64 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Searches the database for a row with a ${field.getName()}
 	 * that matches the one provided
 	 */
-	static ${className} retrieveBy${StringFormat.titleCase(field.getName())}(${field.getDartType()} value) {
+	static Future<${className}> retrieveBy${StringFormat.titleCase(field.getName())}(${field.getDartType()} value) {
 ''');
 			if(field.isPrimaryKey() && field.getTable().getPrimaryKey().length == 1) {
-				result.write('\t\treturn ${className}.retrieveByPK(value);\n');
+				result.write('\t\treturn ${baseClassName}.retrieveByPK(value);\n');
 			} else {
-				result.write("\t\treturn ${className}.retrieveByColumn('${field.getName()}', value);\n");
+				result.write("\t\treturn ${baseClassName}.retrieveByColumn('${field.getName()}', value);\n");
 			}
 			result.write("\t}\n");
 		}
 
 		result.write('''
+
+	static Future<${className}> retrieveByColumn(String field, Object value) {
+		Query q = new Query();
+		q.add(field, value);
+		q.setLimit(1);
+''');
+		if(PK != null) {
+			result.write('''
+		q.order('${PK.getName()}');
+''');
+		}
+		result.write('''
+		return ${baseClassName}.doSelectOne(q);
+	}
+
+	/**
+	 * Populates and returns a List of ${className} objects with the results of a query
+	 * If the query returns no results, returns an empty List
+	 */
+	static Future<List<${className}>> fetch(String queryString) {
+		DABLDDO conn = ${baseClassName}.getConnection();
+		Completer c = new Completer();
+		conn.query(queryString).then((DDOStatement result) {
+			c.complete(${baseClassName}.fromResult(result, ${className}));
+		});
+		return c.future;
+	}
+
+	/**
+	 * Returns a List of ${className} objects from a DDOStatement (Query result)
+	 */
+	static List<${className}> fromResult(DDOStatement result, [List<Type> classNames = null, bool usePool = null]) {
+		if (null == usePool) {
+			usePool = ${baseClassName}._poolEnabled;
+		}
+
+		if(classNames == null) {
+			classNames = new List<Type>();
+			classNames.add(reflect(new Symbol('${className}')).type.reflectedType);
+		}
+		List<${className}> results = new List<${className}>();
+		for(Model m in Model.fromResult(result, classNames, usePool)) {
+			results.add(m as ${className});
+		}
+
+		return results;
+	}
 
 	/**
 	 * Casts values of int fields to (int)
@@ -368,7 +445,236 @@ abstract class ${baseClassName} extends ApplicationModel {
 		return this;
 	}
 	*/
+
+	/**
+	 * Add (or replace) to the instance pool
+	 */
+	static void insertIntoPool(${className} obj) {
+		if(!${baseClassName}._poolEnabled) {
+			return;
+		}
 ''');
+		if(PKs.isEmpty) {
+			result.write('''
+		//This table doesn't have primary keys, so there's no way to key the instance
+		return;
+''');
+		}
+		result.write('''
+		if (${baseClassName}._instancePoolCount > Model.MAX_INSTANCE_POOL_SIZE) {
+			return;
+		}
+
+		${baseClassName}._instancePool[obj.getPrimaryKeyValues().join('-')] = obj;
+		${baseClassName}._instancePoolCount = ${baseClassName}._instancePool.length;
+	}
+
+	/**
+	 * Return the cached instance from the pool
+	 */
+	static ${className} retrieveFromPool(Object pkValue) {
+		if(!${baseClassName}._poolEnabled || null == pkValue) {
+			return null;
+		}
+		String key = pkValue.toString();
+		if(_instancePool.containsKey(key)) {
+			return _instancePool[key];
+		}
+		return null;
+	}
+
+	/**
+	 * Remove the object from the instance pool.
+	 */
+	static void removeFromPool(Object obj) {
+		String pk = (obj is Model) ? obj.getPrimaryKeyValues().join('-') : obj.toString();
+		if(${baseClassName}._instancePool.containsKey(pk)) {
+			${baseClassName}._instancePool.remove(pk);
+			${baseClassName}._instancePoolCount = ${baseClassName}._instancePool.length;
+		}
+	}
+
+	/**
+	 * Empty the instance pool.
+	 */
+	static void flushPool() => ${baseClassName}._instancePool.clear();
+
+	static void setPoolEnabled([bool b = true]) {
+		${baseClassName}._poolEnabled = b;
+	}
+	
+	static bool getPoolEnabled() => ${baseClassName}._poolEnabled;
+	
+	static Future<int> doCount([Query q = null]) {
+		q = q != null ? q.clone() : new Query();
+		DABLDDO conn = ${baseClassName}.getConnection();
+		if (q.getTable() == null) {
+			q.setTable(${baseClassName}.getTableName());
+		}
+		return q.doCount(conn);
+	}
+
+	static Future<int> doDelete(Query q, [bool flushPool = true]) {
+		DABLDDO conn = ${baseClassName}.getConnection();
+		q = q.clone();
+		if (q.getTable() == null) {
+			q.setTable(${baseClassName}.getTableName());
+		}
+		Future<int> result = q.doDelete(conn);
+		
+		if (flushPool) {
+			${baseClassName}.flushPool();
+		}
+		return result;
+	}
+
+	static Future<List<${className}>> doSelect([Query q = null, List<Type> additionalClasses = null]) {
+		if(additionalClasses == null) {
+			additionalClasses = new List<Type>();
+		}
+		additionalClasses.insert(0, ${className});
+		Completer c = new Completer();
+		${baseClassName}.doSelectRS(q).then((DDOStatement result) {
+			c.complete(${baseClassName}.fromResult(result, additionalClasses));
+		});
+		return c.future;
+	}
+
+	static Future<${className}> doSelectOne([Query q = null, List<String> additionalClasses = null]) {
+		q = q != null ? q.clone() : new Query();
+		q.setLimit(1);
+		Completer c = new Completer();
+		${baseClassName}.doSelect(q, additionalClasses).then((List<${className}> objs) {
+			c.complete(objs.first);
+		});
+		return c.future;
+	}
+
+	static Future<int> doUpdate(Map columnValues, [Query q = null]) {
+		q = q != null ? q.clone() : new Query();
+		DABLDDO conn = ${baseClassName}.getConnection();
+
+		if (q.getTable() == null) {
+			q.setTable(${baseClassName}.getTableName());
+		}
+
+		return q.doUpdate(columnValues, conn);
+	}
+
+	/**
+	 * Set the maximum insert batch size, once this size is reached the batch automatically inserts.
+	 */
+	static int setInsertBatchSize([int size = 500]) => ${baseClassName}._insertBatchSize = size;
+	
+	/**
+	 * Queue for batch insert
+	 */
+	${className} queueForInsert() {
+		if(${baseClassName}._insertBatch.length >= ${baseClassName}._insertBatchSize) {
+			${baseClassName}.insertBatch();
+		}
+
+		${baseClassName}._insertBatch.add(this);
+
+		return this;
+	}
+
+	static Future<int> insertBatch() {
+		if (${baseClassName}._insertBatch.isEmpty) {
+			return new Future.value(0);
+		}
+
+		DABLDDO conn = ${baseClassName}.getConnection();
+		List<String> columns = ${baseClassName}.getColumnNames();
+		String quotedTable = conn.quoteIdentifier(${baseClassName}.getTableName());
+''');
+		if(autoIncrement) {
+			result.write('''
+		Object pk = ${baseClassName}.getPrimaryKey();
+		if (columns.contains(pk)) {
+			columns.remove(pk);
+		}
+''');
+		}
+		result.write('''
+	
+		List values = new List();
+
+		List<String> queryS = new List<String>();
+		queryS.add('INSERT INTO \${quotedTable} (\${columns.map((String s) => conn.quoteIdentifier(s)).join(', ')}) VALUES');
+
+		List<String> placeHolders;
+		for(${className} obj in ${baseClassName}._insertBatch) {
+			placeHolders = new List<String>();
+
+			if (!obj.validate()) {
+				throw new Exception('Cannot save ${className} with validation errors: \${obj.getValidationErrors().join(', ')}');
+			}
+
+			if (obj.isNew && ${baseClassName}.hasColumn('Created') && !obj.isColumnModified('Created')) {
+				obj.setCreated(new DateTime.now().toIso8601String());
+			}
+			if ((obj.isNew || obj.isModified()) && ${baseClassName}.hasColumn('Updated') && !obj.isColumnModified('Updated')) {
+				obj.setUpdated(new DateTime.now().toIso8601String());
+			}
+
+			for (String column in columns) {
+''');
+		if(autoIncrement) {
+			result.write('''
+				if (column == pk) {
+					continue;
+				}
+''');
+		}
+		result.write('''
+				values.add(obj.getColumn(column));
+				placeHolders.add('?');
+			}
+			queryS.add('(\${placeHolders.join(', ')})');
+		}
+
+		QueryStatement statement = new QueryStatement(conn);
+		statement.setString(queryS.join('\\n'));
+		statement.setParams(values);
+		Completer c = new Completer();
+		statement.bindAndExecute().then((DDOStatement results) {
+			for (${className} obj in ${baseClassName}._insertBatch) {
+				obj.setNew(false);
+				obj.resetModified();
+				if(obj.hasPrimaryKeyValues()) {
+					${baseClassName}.insertIntoPool(obj);
+				} else {
+					obj.setDirty(true);
+				}
+			}
+			${baseClassName}._insertBatch.clear();
+			c.complete(results.rowCount());
+		});
+		return c.future;
+	}
+
+	static Object coerceTemporalValue(Object value, String columnType, [DABLDDO conn = null]) {
+		if (null == conn) {
+			conn = ${baseClassName}.getConnection();
+		}
+		return Model.coerceTemporalValue(value, columnType, conn);
+	}
+
+	static Future<DDOStatement> doSelectRS([Query q = null]) {
+		q = q != null ? q.clone() : new Query();
+		DABLDDO conn = ${baseClassName}.getConnection();
+
+		if (q.getTable() == null) {
+			q.setTable(${baseClassName}.getTableName());
+		}
+
+		return q.doSelect(conn);
+	}
+''');
+
+		//Foreign keys to this table
+
 		Map<String, int> toTableList = new Map<String, int>();
 		for(ForeignKey r in fromTable) {
 			String toTable = r.getForeignTableName();
@@ -385,9 +691,11 @@ abstract class ${baseClassName} extends ApplicationModel {
 		for(ForeignKey r in fromTable) {
 			String toTable = r.getForeignTableName();
 			String toClassName = baseGenerator.getModelName(toTable);
+			String baseToClassName = "base${toClassName}";
 			String lcToClassName = toClassName.toLowerCase();
 			List<String> foreignColumns = r.getForeignColumns();
 			String toColumn = foreignColumns.first;
+			String tcToColumn = StringFormat.titleCase(toColumn);
 			List<String> localColumns = r.getLocalColumns();
 			String fromColumn = localColumns.first;
 			bool namedId = false;
@@ -446,10 +754,10 @@ abstract class ${baseClassName} extends ApplicationModel {
 		if (null == ${lcToClassName}) {
 			set${fromColumnMethodName}(null);
 		} else {
-			if (${lcToClassName}.get${toColumn} == null) {
+			if (null == ${lcToClassName}.get${tcToColumn}()) {
 				throw new Exception('Cannot connect a ${toClassName} without a ${toColumn}');
 			}
-			set${fromColumnMethodName}(${lcToClassName}.get${toColumn}());
+			set${fromColumnMethodName}(${lcToClassName}.get${tcToColumn}());
 		}
 ''');
 			if(!fkIsPk) {
@@ -473,7 +781,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Returns a ${toTable} object with a ${toColumn}
 	 * that matches this.${fromColumn}
 	 */
-	${toClassName} get${StringFormat.titleCase(fromColumnClean)}() {
+	Future<${toClassName}> get${StringFormat.titleCase(fromColumnClean)}() {
 		return get${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}();
 	}
 ''');
@@ -485,14 +793,14 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Returns a ${toTable} object with a ${toColumn}
 	 * that matches this.${fromColumn}
 	 */
-	${toClassName} get${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}() {
+	Future<${toClassName}> get${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}() {
 		Object fkValue = get${StringFormat.titleCase(fromColumn)}();
 		if (null == fkValue) {
 			return null;
 		}
 ''');
 			if(fkIsPk) {
-				result.write("\n\t\treturn ${toClassName}.retrieveByPK(fkValue);\n");
+				result.write("\n\t\treturn ${baseToClassName}.retrieveByPK(fkValue);\n");
 			} else {
 				result.write('''
 		${toClassName} result = ${fkProperty};
@@ -500,7 +808,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			return result;
 		}
 
-		result = ${toClassName}.retrieveBy${StringFormat.titleCase(toColumn)}(fkValue);
+		result = ${baseToClassName}.retrieveBy${StringFormat.titleCase(toColumn)}(fkValue);
 
 		if (getCacheResults()) {
 			${fkProperty} = result;
@@ -515,8 +823,8 @@ abstract class ${baseClassName} extends ApplicationModel {
 				usedMethods.add('doSelectJoin${StringFormat.titleCase(fromColumnClean)}');
 				result.write('''
 
-	static List<${className}> doSelectJoin${StringFormat.titleCase(fromColumnClean)}([Query q = null, String joinType = Query.LEFT_JOIN]) {
-		return ${className}.doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}(q, joinType);
+	static Future<List<${className}>> doSelectJoin${StringFormat.titleCase(fromColumnClean)}([Query q = null, String joinType = Query.LEFT_JOIN]) {
+		return ${baseClassName}.doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}(q, joinType);
 	}
 ''');
 			}
@@ -529,7 +837,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		 * Returns a ${toTable} object with a ${toColumn}
 		 * that matches this.${fromColumn}
 		 */
-		${className} get${toClassName}() {
+		Future<${className}> get${toClassName}() {
 			return get${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}();
 		}
 ''');
@@ -547,48 +855,48 @@ abstract class ${baseClassName} extends ApplicationModel {
 		usedMethods.add('doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}');
 		result.write('''
 
-	static List<${className}> doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}([Query q = null, String joinType = Query.LEFT_JOIN]) {
+	static Future<List<${className}>> doSelectJoin${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;
 		String alias = q.getAlias();
-		String thisTable = alias != null ? alias : ${className}.getTableName();
+		String thisTable = alias != null ? alias : ${baseClassName}.getTableName();
 		if(columns.isEmpty) {
 			if(alias != null) {
-				for(String columnName in ${className}.getColumns()) {
+				for(String columnName in ${baseClassName}.getColumns()) {
 					columns.add("\${alias}.\${columnName}");
 				}
 			} else {
-				columns = ${className}.getColumns();
+				columns = ${baseClassName}.getColumns();
 			}
 		}
 
-		String toTable = ${toClassName}.getTableName();
+		String toTable = ${baseToClassName}.getTableName();
 		q.join(toTable, "\${thisTable}.${fromColumn} = \${toTable}.${toColumn}\", joinType);
-		for (String column in ${toClassName}.getColumns()) {
+		for (String column in ${baseToClassName}.getColumns()) {
 			columns.add(column);
 		}
-		q.setColumns(columns);
+		q.setColumns(columns.asMap());
 
-		return ${className}.doSelect(q, ['${toClassName}']);
+		return ${baseClassName}.doSelect(q, ['${toClassName}']);
 	}
 ''');
 		}
 		usedMethods.add('doSelectJoinAll');
 		result.write('''
 
-	static List<${className}> doSelectJoinAll([Query q = null, String joinType = Query.LEFT_JOIN]) {
+	static Future<List<${className}>> doSelectJoinAll([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;
 		List<String> classes = new List<String>();
 		String alias = q.getAlias();
-		String thisTable = alias != null ? alias : ${className}.getTableName();
+		String thisTable = alias != null ? alias : ${baseClassName}.getTableName();
 		if(columns.isEmpty) {
 			if(alias != null) {
-				for(String columnName in ${className}.getColumns()) {
+				for(String columnName in ${baseClassName}.getColumns()) {
 					columns.add('\${alias}.\${columnName}');
 				}
 			} else {
-				columns = ${className}.getColumns();
+				columns = ${baseClassName}.getColumns();
 			}
 		}
 
@@ -597,15 +905,16 @@ abstract class ${baseClassName} extends ApplicationModel {
 		for(ForeignKey r in fromTable) {
 			String totable = r.getForeignTableName();
 			String toClassName = baseGenerator.getModelName(totable);
+			String baseToClassName = "base${toClassName}";
 			List<String> foreignColumns = r.getForeignColumns();
 			String toColumn = foreignColumns.first;
 			List<String> localColumns = r.getLocalColumns();
 			String fromColumn = localColumns.first;
 			result.write('''
 
-		toTable = ${toClassName}.getTableName();
+		toTable = ${baseToClassName}.getTableName();
 		q.join(toTable, "\${thisTable}.${fromColumn} = \${toTable}.${toColumn}", joinType);
-		for(String column in ${toClassName}.getColumns()) {
+		for(String column in ${baseToClassName}.getColumns()) {
 			columns.add(column);
 		}
 		classes.add('${toClassName}');
@@ -613,8 +922,8 @@ abstract class ${baseClassName} extends ApplicationModel {
 		}
 		result.write('''
 
-		q.setColumns(columns);
-		return ${className}.doSelect(q, classes);
+		q.setColumns(columns.asMap());
+		return ${baseClassName}.doSelect(q, classes);
 	}
 ''');
 		Map<String, int> fromTableList = new Map<String, int>();
@@ -628,11 +937,13 @@ abstract class ${baseClassName} extends ApplicationModel {
 			}
 
 			String fromClassName = baseGenerator.getModelName(fromTable);
+			String baseFromClassName = "base${fromClassName}";
 			List<String> localColumns = r.getLocalColumns();
 			String fromColumn = localColumns.first;
 			List<String> foreignColumns = r.getForeignColumns();
 			String toColumn = foreignColumns.first;
 			String toTable = r.getForeignTableName();
+			String tcToColumn = StringFormat.titleCase(toColumn);
 			String tcFromColumn = StringFormat.titleCase(fromColumn);
 			String tcFromClassName = StringFormat.titleCase(fromClassName);
 			String cacheProperty = "_${fromClassName}sRelatedBy${tcFromColumn}_c";
@@ -662,11 +973,11 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Returns the count of ${fromClassName} objects(rows) from the ${fromTable} table
 	 * with a ${fromColumn} that matches this.${toColumn}.
 	 */
-	int ${cacheCountMethodName}([Query q = null]) {
-		if(null == get${toColumn}()) {
-			return 0;
+	Future<int> ${cacheCountMethodName}([Query q = null]) {
+		if(null == get${tcToColumn}()) {
+			return new Future.value(0);
 		}
-		return ${fromClassName}.doCount(get${StringFormat.titleCase(fromClassName)}sRelatedBy${StringFormat.titleCase(fromColumn)}Query(q));
+		return ${baseFromClassName}.doCount(get${StringFormat.titleCase(fromClassName)}sRelatedBy${StringFormat.titleCase(fromColumn)}Query(q));
 	}
 ''');
 			}
@@ -685,12 +996,12 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Deletes the ${fromTable} objects(rows) from the ${fromTable} table
 	 * with a ${fromColumn} that matches this.${toColumn}
 	 */
-	int ${cacheDeleteMethodName}([Query q = null]) {
-		if (null == get${toColumn}()) {
-			return 0;
+	Future<int> ${cacheDeleteMethodName}([Query q = null]) {
+		if (null == get${tcToColumn}()) {
+			return new Future.value(0);
 		}
 		${cacheProperty}.clear(); //Clear cached objects
-		return ${fromClassName}.doDelete(get${tcFromClassName}sRelatedBy${tcFromColumn}Query(q));
+		return ${baseFromClassName}.doDelete(get${tcFromClassName}sRelatedBy${tcFromColumn}Query(q));
 	}
 ''');
 			}
@@ -706,9 +1017,9 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * method will return the cached result instead of querying the database
 	 * a second time (for performance purposes).
 	 */
-	List<${fromClassName}> ${cacheGetMethodName}([Query q = null]) {
-		if (null == get${toColumn}()) {
-			return new List<${fromClassName}>();
+	Future<List<${fromClassName}>> ${cacheGetMethodName}([Query q = null]) {
+		if (null == get${tcToColumn}()) {
+			return new Future.value(new List<${fromClassName}>());
 		}
 
 		if (
@@ -717,15 +1028,17 @@ abstract class ${baseClassName} extends ApplicationModel {
 			${cacheProperty}.isNotEmpty &&
 			!isColumnModified('${toColumn}')
 		) {
-			return ${cacheProperty};
+			return new Future.value(${cacheProperty});
 		}
+		Completer c = new Completer();
+		${baseFromClassName}.doSelect(${cacheGetMethodNameQuery}(q)).then((List<${fromClassName}> result) {
+			if (getCacheResults() && q != null) { //We can't cache when sent a Query object
+				${cacheProperty} = result;
+			}
+			c.complete(result);
+		});
 
-		List<${fromClassName}> result = ${fromClassName}.doSelect(${cacheGetMethodNameQuery}(q));
-
-		if (getCacheResults() && q != null) { //We can't cache when sent a Query object
-			${cacheProperty} = result;
-		}
-		return result;
+		return c.future;
 	}
 ''');
 			}
@@ -809,7 +1122,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Returns true if the column values validate
 	 */
 	bool validate() {
-		_validationErrors = new List<String>();
+		validationErrors = new List<String>();
 ''');
 		for(Column field in fields) {
 			if(
@@ -821,16 +1134,54 @@ abstract class ${baseClassName} extends ApplicationModel {
 			) {
 				result.write('''
 		if (null == get${field.getName()}()) {
-			_validationErrors.add('${field.getName()} must not be null');
+			validationErrors.add('${field.getName()} must not be null');
 		}
 ''');
 
 			}
 		}
 		result.write('''
-		return _validationErrors.isEmpty;
+		return validationErrors.isEmpty;
+	}
+
+	Query getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]) {
+		Object value = getColumn(localColumn);
+		if (null == value) {
+			throw new Exception('NULL cannot be used to match keys.');
+		}
+
+		String column = "\${foreignTable}.\${foreignColumn}";
+
+		if (q != null) {
+			q = q.clone();
+			String alias = q.getAlias();
+			if (alias != null && foreignTable == q.getTable()) {
+				column = "\${alias}.\${foreignColumn}";
+			}
+		} else {
+			q = new Query();
+		}
+		q.add(column, value);
+		return q;
+	}
+
+	Model setColumnValue(String columnName, Object value, [String columnType = null]) {
+		return setColumnValueByLibrary(columnName, value, '${baseGenerator.getProjectName()}', columnType);
+	}
+
+	List<Object> getPrimaryKeyValues() {
+	    List<String> vals = new List<String>();
+	    InstanceMirror im = reflect(this);
+
+		 for(String pk in getPrimaryKeys()) {
+	    	var name = MirrorSystem.getName(new Symbol("_\${pk}"));
+	    	var symb = MirrorSystem.getSymbol(name, currentMirrorSystem().findLibrary(new Symbol('${baseGenerator.getProjectName()}')));
+	    	vals.add(im.getField(symb).reflectee.toString());
+	    }
+	    return vals;
 	}
 }
+	
 ''');
 		return result.toString();
 	}

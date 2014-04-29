@@ -180,7 +180,7 @@ abstract class BaseGenerator {
 
 	String getControllerFileName(String tableName) => "${getControllerName(tableName)}.dart";
 
-	String getProjectName() => "${getDBName()}Project";
+	String getProjectName() => "${getDBName()}_project";
 
 	Future<String> getBaseModel(String tableName) {
 		Completer c = new Completer();
@@ -270,21 +270,22 @@ abstract class BaseGenerator {
 			if(!_options.containsKey('model_path') || _options['model_path'] == null) {
 				throw new Exception('model_path not defined');
 			}
+			String projectPath = _options['project_path'];
 			String baseModelPath = _options['base_model_path'];
 			String modelPath = _options['model_path'];
-			ensureDirectoryExists(baseModelPath);
-			ensureDirectoryExists(modelPath);
+			ensureDirectoryExists("${projectPath}${baseModelPath}");
+			ensureDirectoryExists("${projectPath}${modelPath}");
 			List<String> modelFiles = new List<String>();
 			for(String tableName in tableNames) {
 				String className = StringFormat.variable(getModelName(tableName));
 				String baseName =  "${baseModelPath}base_${className}.dart";
 				getBaseModel(tableName).then((String contents){
-					File output = new File(baseName);
+					File output = new File("${projectPath}${baseName}");
 	            	output.writeAsStringSync(contents);
 				});
 
 				String modelFilePath = "${modelPath}${className}.dart";
-				File modelFile = new File(modelFilePath);
+				File modelFile = new File("${projectPath}${modelFilePath}");
 				if(!modelFile.existsSync()) {
 					modelFile.writeAsStringSync(getModel(tableName));
 				}
@@ -303,15 +304,23 @@ abstract class BaseGenerator {
 			pg.baseGenerator = this;
 			fileNames.sort();
 			pg.fileNames = fileNames;
+
+			String basePath = _options['project_path'];
+
 			String projName = StringFormat.variable(getProjectName());
 			String projectContents = pg.getFileContents();
-			File projFile = new File('${projName}.dart');
+			File projFile = new File('${basePath}${projName}.dart');
 			projFile.writeAsStringSync(projectContents);
 
-			File pubFile = new File('pubspec.yaml');
+			File pubFile = new File('${basePath}pubspec.yaml');
 			PubSpecGenerator psg = new PubSpecGenerator();
 			psg.baseGenerator = this;
 			pubFile.writeAsStringSync(psg.getFileContents());
+
+			ApplicationModelGenerator amg = new ApplicationModelGenerator();
+			amg.baseGenerator = this;
+			File applicationModel = new File('${basePath}application_model.dart');
+			applicationModel.writeAsStringSync(amg.getFileContents());
 		});
 
 	}

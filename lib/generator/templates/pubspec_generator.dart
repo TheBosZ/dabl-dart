@@ -10,7 +10,9 @@ class PubSpecGenerator extends FileGenerator {
 name: ${baseGenerator.getProjectName()}
 description: Insert description here.
 dependencies:
-  dabl: any
+  dabl:
+    path: ../dabl-dart
+  intl: any
 ''';
 	}
 }

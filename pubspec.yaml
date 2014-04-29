@@ -5,5 +5,6 @@ dependencies:
     path: C:\Users\Nathan\dart\dabl-query
   database_reverse_engineer:
     path: ../database_reverse_engineer
-  ddo: any
+  ddo:
+    path: ../pdodart
   intl: any

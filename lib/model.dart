@@ -81,11 +81,6 @@ abstract class Model {
 	 */
     static const int MAX_INSTANCE_POOL_SIZE = 400;
 
-    /**
-	 * Name of the table
-	 */
-	static String _tableName;
-
 	/**
 	 * Cache of objects retrieved from the database
 	 */
@@ -138,27 +133,32 @@ abstract class Model {
 	/**
 	 * Array to contain names of modified columns
 	 */
-	List<String> _modifiedColumns = new List<String>();
+	Set<String> modifiedColumns = new Set<String>();
 
 	/**
 	 * Whether or not to cache results in the internal object cache
 	 */
-	bool _cacheResults = true;
+	bool cacheResults = true;
+
+	/**
+	 * Whether or not to save dates as formatted date/time strings
+	 */
+	bool formatDates = true;
 
 	/**
 	 * Whether or not this is a new object
 	 */
-	bool _isNew = true;
+	bool isNew = true;
 
 	/**
 	 * Wether or not the object is out of sync with the databse
 	 */
-	bool _isDirty = false;
+	bool isDirty = false;
 
 	/**
 	 * Errors from the validate() step of saving
 	 */
-	List<String> _validationErrors = new List<String>();
+	List<String> validationErrors = new List<String>();
 
 	String toString();
 
@@ -186,7 +186,7 @@ abstract class Model {
 	}
 
 	static String getTableName() {
-		return _tableName;
+		throw new UnimplementedError('getTableName needs to be implemented on the baseModel');
 	}
 
 	static List<String> getColumnNames() {
@@ -211,13 +211,13 @@ abstract class Model {
 		throw new UnimplementedError('hasColumn() not implemented yet');
 	}
 
-	static String normalizeColumnName(String col_name) {
-		int split = 0;
-		if(col_name.contains('.')){
-			split = col_name.indexOf('.') + 1;
-		}
-		return col_name.substring(split);
-	}
+	static String normalizeColumnName(String columnName) {
+    	int pos = columnName.lastIndexOf('.');
+    	if (pos != -1) {
+    		return columnName.substring(pos + 1);
+    	}
+    	return columnName;
+    }
 
 	static String getPrimaryKey() {
 		return _primaryKey;
@@ -368,17 +368,22 @@ abstract class Model {
 		return q.doCount(getConnection());
 	}
 
-	static Future<List<Model>> doSelect([Query q = null, List<String> additional_classes = null]){
+	static Future<List<Model>> doSelect([Query q = null, List<Type> additional_classes = null]){
+		throw new UnimplementedError('doSelect should be overridden in child class');
 		String modelname = '';
 		if(additional_classes == null) {
-			additional_classes = new List<String>();
+			additional_classes = new List<Type>();
 		}
 
 		additional_classes.insert(0, modelname);
-		return fromResult(doSelectRS(q), additional_classes);
+		Completer c = new Completer();
+		doSelectRS(q).then((DDOStatement result) {
+			c.complete(fromResult(result, additional_classes));
+		});
+		return c.future;
 	}
 
-	static Future<Model> doSelectOne([Query q= null, List<String> additional_classes = null]) {
+	static Future<Model> doSelectOne([Query q= null, List<Type> additional_classes = null]) {
 		q = q != null ? q : getQuery();
 		q.setLimit(1);
 		Completer c = new Completer();
@@ -400,8 +405,45 @@ abstract class Model {
 		throw new UnimplementedError();
 	}
 
-	static Future<List<Model>> fromResult(Future<DDOStatement> result, [List<String> classes = null, bool use_pool = null]) {
-		throw new UnsupportedError('fromResult needs to be overridden in the child class');
+	static List<Model> fromResult(DDOStatement result, List<Type> classes, [bool usePool = true]) {
+		if(classes == null) {
+			throw new ArgumentError('No class name given');
+		}
+		List<Model> objects = new List<Model>();
+
+		if(classes.length > 1) {
+			throw new UnimplementedError('Multiple classes at once isn\'t implemented yet.');
+		} else {
+			ClassMirror cm = reflectClass(classes.first);
+			result.setFetchMode(DDO.FETCH_CLASS, classes.first);
+			Model obj;
+			String pk;
+			Model poolObject;
+			bool foundInPool;
+			while(false != (obj = result.fetch())) {
+				if(obj == null) {
+					break;
+				}
+				InstanceMirror im = reflect(obj);
+				if(usePool
+					&& ( pk != null || ((pk = cm.invoke(const Symbol('getPrimaryKey'), []).reflectee) != null))
+					&& ( (poolObject = cm.invoke(new Symbol('retrieveFromPool'), [im.invoke(new Symbol("get${StringFormat.titleCase(pk)}"), []).reflectee]).reflectee)) != null) {
+
+        			obj = poolObject;
+
+				} else  {
+					//obj.castInts();
+					obj.setNew(false);
+				}
+				objects.add(obj);
+
+				if(usePool) {
+					cm.invoke(new Symbol('insertIntoPool'), [obj]);
+				}
+
+			}
+		}
+		return objects;
 	}
 
 	bool fromNumericResultArray(List values, int startCol);
@@ -428,13 +470,11 @@ abstract class Model {
 
 	Model copy();
 
-	bool isModified() => _modifiedColumns.isNotEmpty;
+	bool isModified() => modifiedColumns.isNotEmpty;
 
 	bool isColumnModified(String columnName);
 
-	List<String> getModifiedColumns() => _modifiedColumns;
-
-	Model setColumnValue(String columnName, Object value, [String columnType = null]);
+	Set<String> getModifiedColumns() => modifiedColumns;
 
 	Model resetModified();
 
@@ -446,7 +486,7 @@ abstract class Model {
 
 	Model setCacheResults([bool value = true]);
 
-	bool getCacheResults() => _cacheResults;
+	bool getCacheResults() => cacheResults;
 
 	bool hasPrimaryKeyValues();
 
@@ -454,7 +494,7 @@ abstract class Model {
 
 	bool validate();
 
-	List<String> getValidationErrors() => _validationErrors;
+	List<String> getValidationErrors() => validationErrors;
 
 	int delete();
 
@@ -462,24 +502,99 @@ abstract class Model {
 
 	int archive();
 
-	bool isNew() => _isNew;
+	//bool isNew() => isNew;
 
-	Model setNew(bool isNew);
+	Model setNew(bool isNew) {
+		this.isNew = isNew;
+		return this;
+	}
 
-	bool isDirty() => _isDirty;
+	//bool isDirty() => _isDirty;
 
 	Model setDirty(bool dirty);
 
+	/** Castints isn't necessary
 	Model castInts();
+	*/
 
 	int _insert();
 
 	int _update();
 
-	Query _getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]);
+	Query getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]);
+
+	Object getColumn(String colName) {
+		InstanceMirror im = reflect(this);
+		return im.invoke(new Symbol("get${StringFormat.titleCase(colName)}"), []).reflectee;
+	}
+
+	Model setColumnValue(String columnName, Object value, [String columnType = null]);
+
+	Model setColumnValueByLibrary(String columnName, Object value, String libraryName, [String columnType = null, DABLDDO connection = null]) {
+		if (null == columnType) {
+			columnType = getColumnType(columnName);
+		}
+
+		List<Object> trueVals = [true, 1, '1', 'on', 'true'];
+		List<Object> falseVals = [false, 0, '0', 'off', 'false'];
+
+		columnName = normalizeColumnName(columnName);
+
+		if (columnType == Model.COLUMN_TYPE_BOOLEAN) {
+			if(value is String) {
+				value = (value as String).toLowerCase();
+			}
+			if(trueVals.contains(value)) {
+				value = 1;
+			} else if (falseVals.contains(value)) {
+				value = 0;
+			} else if ('' == value || null == value) {
+				value = null;
+			} else {
+				throw new ArgumentError("'${value.toString()}' is not a valid boolean value");
+			}
+		} else {
+			bool temporal = Model.isTemporalType(columnType);
+			bool numeric = Model.isNumericType(columnType);
+
+			if(temporal || numeric) {
+				if(value is String) {
+					value = (value as String).trim();
+				}
+				if ('' == value || 'null' == value) {
+					value = null;
+				} else if (null != value) {
+					if(temporal && formatDates) {
+						value = Model.coerceTemporalValue(value, columnType, connection);
+					} else if(numeric) {
+						if(value is bool) {
+							value = (value as bool) ? 1 : 0;
+						} else if (Model.isIntegerType(columnType)) {
+							if(!(value is int)) {
+								value = int.parse(value.toString());
+							}
+						} else {
+							double floatVal = double.parse(value);
+						}
+					}
+				}
+			}
+		}
+
+
+		if(value != getColumn(columnName)) {
+			InstanceMirror im = reflect(this);
+			var name = MirrorSystem.getName(new Symbol("_${columnName}"));
+			var symb = MirrorSystem.getSymbol(name, currentMirrorSystem().findLibrary(new Symbol(libraryName)));
+			im.setField(symb, value);
+			modifiedColumns.add(columnName);
+		}
+
+		return this;
+	}
 
 	static DABLDDO getConnection() {
-		throw new UnsupportedError('getConnection needs to be overridden in child class');
+		return DBManager.getConnection();
 	}
 
 	static Model retrieveByPK(Object id) {
