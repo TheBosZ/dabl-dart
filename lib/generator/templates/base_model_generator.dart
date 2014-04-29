@@ -241,13 +241,13 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Sets the value of the ${field.getName()} field
 	 */
 
-	${className} ${cacheSetMethod}(String value) {
+	${className} ${cacheSetMethod}(Object value) {
 		return setColumnValue('${field.getName()}', value, Model.COLUMN_TYPE_${field.getType()});
 	}
 ''');
             }
             if(rawMethodName.toLowerCase() != methodName.toLowerCase() &&
-            		!usedMethods.contains('get${rawMethodName}')) {
+              !usedMethods.contains('get${rawMethodName}')) {
             	usedMethods.add('get${rawMethodName}');
             	usedMethods.add('set${rawMethodName}');
             	result.write('''
@@ -283,7 +283,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 
 	static ${className} create() => new ${className}();
 
-	static String getTableName() =>  ${baseClassName}._tableName;
+	static String getTableName() => ${baseClassName}._tableName;
 
 	static List<String> getColumnNames() => ${baseClassName}._columnNames;
 
@@ -319,6 +319,8 @@ abstract class ${baseClassName} extends ApplicationModel {
 ''');
 		if(PKs.length > 1) {
 			result.write("\t\tthrow new Exception('This table was more than one primary key. Use retrieveByPKs() instead');\n");
+		} else if(PKs.length == 0) {
+			result.write("\t\tthrow new Exception('This table does not have any primary keys');\n");
 		} else {
 			result.write("\t\treturn ${baseClassName}.retrieveByPKs(${PKs.isNotEmpty && PKs.length == 1 ? StringFormat.variable(PKs.first.getName()) : 'the_pk'});\n");
 		}
@@ -405,7 +407,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		DABLDDO conn = ${baseClassName}.getConnection();
 		Completer c = new Completer();
 		conn.query(queryString).then((DDOStatement result) {
-			c.complete(${baseClassName}.fromResult(result, ${className}));
+			c.complete(${baseClassName}.fromResult(result, [${className}]));
 		});
 		return c.future;
 	}
@@ -459,7 +461,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		//This table doesn't have primary keys, so there's no way to key the instance
 		return;
 ''');
-		}
+		} else {
 		result.write('''
 		if (${baseClassName}._instancePoolCount > Model.MAX_INSTANCE_POOL_SIZE) {
 			return;
@@ -467,6 +469,9 @@ abstract class ${baseClassName} extends ApplicationModel {
 
 		${baseClassName}._instancePool[obj.getPrimaryKeyValues().join('-')] = obj;
 		${baseClassName}._instancePoolCount = ${baseClassName}._instancePool.length;
+''');
+		}
+		result.write('''
 	}
 
 	/**
@@ -540,7 +545,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		return c.future;
 	}
 
-	static Future<${className}> doSelectOne([Query q = null, List<String> additionalClasses = null]) {
+	static Future<${className}> doSelectOne([Query q = null, List<Type> additionalClasses = null]) {
 		q = q != null ? q.clone() : new Query();
 		q.setLimit(1);
 		Completer c = new Completer();
@@ -610,13 +615,22 @@ abstract class ${baseClassName} extends ApplicationModel {
 			if (!obj.validate()) {
 				throw new Exception('Cannot save ${className} with validation errors: \${obj.getValidationErrors().join(', ')}');
 			}
-
+''');
+		if(fields.where((Column c) => c.getName() == 'Created').isNotEmpty) {
+			result.write('''
 			if (obj.isNew && ${baseClassName}.hasColumn('Created') && !obj.isColumnModified('Created')) {
 				obj.setCreated(new DateTime.now().toIso8601String());
 			}
+''');
+		}
+		if(fields.where((Column c) => c.getName() == 'Updated').isNotEmpty) {
+        			result.write('''
 			if ((obj.isNew || obj.isModified()) && ${baseClassName}.hasColumn('Updated') && !obj.isColumnModified('Updated')) {
 				obj.setUpdated(new DateTime.now().toIso8601String());
 			}
+''');
+		}
+		result.write('''
 
 			for (String column in columns) {
 ''');
@@ -833,22 +847,22 @@ abstract class ${baseClassName} extends ApplicationModel {
 					usedMethods.add('get${toClassName}');
 					result.write('''
 
-		/**
-		 * Returns a ${toTable} object with a ${toColumn}
-		 * that matches this.${fromColumn}
-		 */
-		Future<${className}> get${toClassName}() {
-			return get${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}();
-		}
+	/**
+	 * Returns a ${toTable} object with a ${toColumn}
+	 * that matches this.${fromColumn}
+	 */
+	Future<${toClassName}> get${toClassName}() {
+		return get${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}();
+	}
 ''');
 				}
 				if(!usedMethods.contains('set${toClassName}')) {
 					usedMethods.add('set${toClassName}');
 					result.write('''
 
-		${className} set${toClassName}([${toClassName} ${lcToClassName} = null]) {
-			return set${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}(${lcToClassName});
-		}
+	${className} set${toClassName}([${toClassName} ${lcToClassName} = null]) {
+		return set${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}(${lcToClassName});
+	}
 ''');
 				}
 			}
@@ -887,7 +901,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	static Future<List<${className}>> doSelectJoinAll([Query q = null, String joinType = Query.LEFT_JOIN]) {
 		q = q != null ? q.clone() : new Query();
 		List<String> columns = q.getColumns().values;
-		List<String> classes = new List<String>();
+		List<Type> classes = new List<Type>();
 		String alias = q.getAlias();
 		String thisTable = alias != null ? alias : ${baseClassName}.getTableName();
 		if(columns.isEmpty) {
@@ -917,7 +931,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		for(String column in ${baseToClassName}.getColumns()) {
 			columns.add(column);
 		}
-		classes.add('${toClassName}');
+		classes.add(${toClassName});
 ''');
 		}
 		result.write('''
@@ -1071,7 +1085,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Convenience function for ${className}.get${fromClassName}sRelatedBy${fromColumn}
 	 */
-	${fromClassName} ${cacheGetMethod}([Object extra = null]) {
+	Future<List<${fromClassName}>> ${cacheGetMethod}([Object extra = null]) {
 		return get${tcFromClassName}sRelatedBy${tcFromColumn}(extra);
 	}
 ''');
@@ -1085,7 +1099,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Convenience function for ${className}.get${fromClassName}sRelatedBy($fromColumn}Query
 	 */
 	Query ${cacheGetQueryMethod}([Query q = null]) {
-		return get${fromClassName}sRelatedBy${fromColumn}Query(q);
+		return get${tcFromClassName}sRelatedBy${tcFromColumn}Query(q);
 	}
 ''');
 			}
@@ -1097,8 +1111,8 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Convenience function for ${className}.delete($fromClassName}sRelatedBy${tcFromColumn}
 	 */
-	int ${cacheDeleteMethod}([Query q = null]) {
-		return delete${fromClassName}sRelatedBy${tcFromColumn}(q);
+	Future<int> ${cacheDeleteMethod}([Query q = null]) {
+		return delete${tcFromClassName}sRelatedBy${tcFromColumn}(q);
 	}
 ''');
 			}
@@ -1110,7 +1124,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Convenience function for ${className}.count${tcFromClassName}sRelatedBy${fromColumn}
 	 */
-	int ${cacheCountMethod}([Query q = null]) {
+	Future<int> ${cacheCountMethod}([Query q = null]) {
 		return count${tcFromClassName}sRelatedBy${tcFromColumn}(q);
 	}
 ''');
@@ -1133,7 +1147,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 				!(['created', 'updated'].contains(field.getName()))
 			) {
 				result.write('''
-		if (null == get${field.getName()}()) {
+		if (null == get${StringFormat.titleCase(field.getName())}()) {
 			validationErrors.add('${field.getName()} must not be null');
 		}
 ''');

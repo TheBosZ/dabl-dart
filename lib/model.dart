@@ -207,10 +207,6 @@ abstract class Model {
 
 	static List<String> _lowerCaseColumns = new List<String>();
 
-	static bool hasColumn(String col_name) {
-		throw new UnimplementedError('hasColumn() not implemented yet');
-	}
-
 	static String normalizeColumnName(String columnName) {
     	int pos = columnName.lastIndexOf('.');
     	if (pos != -1) {
@@ -297,25 +293,6 @@ abstract class Model {
 			q.setLimit(params['limit']);
 		}
 		return q;
-	}
-
-	static void insertIntoPool(Model object) {
-		if(!_poolEnabled ||
-			_instancePoolCount >= Model.MAX_INSTANCE_POOL_SIZE ||
-			_primaryKeys.isEmpty) {
-			return;
-		}
-
-		String key = object.getPrimaryKeyValues().join('-');
-		if(key == null || key.isEmpty){
-			return;
-		}
-
-		if(!_instancePool.containsKey(key)){
-			++_instancePoolCount;
-		}
-
-		_instancePool[key] = object;
 	}
 
 	static Model retrieveFromPool(Object key) {
@@ -472,11 +449,18 @@ abstract class Model {
 
 	bool isModified() => modifiedColumns.isNotEmpty;
 
-	bool isColumnModified(String columnName);
+	bool isColumnModified(String columnName) {
+		InstanceMirror im = reflect(this);
+		Set<String> modColumns = im.invoke(const Symbol('getModifiedColumns'), []).reflectee;
+		return modColumns.map((String col) => col.toLowerCase()).contains(normalizeColumnName(columnName).toLowerCase());
+	}
 
 	Set<String> getModifiedColumns() => modifiedColumns;
 
-	Model resetModified();
+	Model resetModified() {
+		modifiedColumns.clear();
+		return this;
+	}
 
 	Model fromArray(Map<String, Object> array);
 
@@ -498,7 +482,31 @@ abstract class Model {
 
 	int delete();
 
-	int save();
+	Future<int> save() {
+		if (isDirty) {
+			throw new Exception('Cannot save dirty ${runtimeType.toString()}. Perhaps it was already saved using bulk insert.');
+		}
+
+		if (!validate()) {
+			throw new Exception('Cannot save ${runtimeType.toString()} with validation errors: ${getValidationErrors().join(', ')}');
+		}
+
+		InstanceMirror im = reflect(this);
+		ClassMirror cm = im.type;
+
+		if (isNew && cm.invoke(const Symbol('hasColumn'), ['Created']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['Created']).reflectee) {
+			im.invoke(const Symbol('setCreated'), [new DateTime.now()]);
+		}
+
+		if ((isNew || isModified()) && cm.invoke(const Symbol('hasColumn'), ['Updated']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['Updated']).reflectee) {
+			im.invoke(const Symbol('setUpdated'), [new DateTime.now()]);
+		}
+
+		if (isNew){
+			return _insert();
+		}
+		return _update();
+	}
 
 	int archive();
 
@@ -517,9 +525,97 @@ abstract class Model {
 	Model castInts();
 	*/
 
-	int _insert();
+	Future<int> _insert() {
+		DABLDDO conn = getConnection();
+		InstanceMirror im = reflect(this);
+		ClassMirror cm = im.type;
+		String pk = cm.invoke(const Symbol('getPrimaryKey'), []).reflectee;
 
-	int _update();
+		List<String> fields = new List<String>();
+		List values = new List();
+		List<String> placeHolders = new List<String>();
+		for(String column in cm.invoke(const Symbol('getColumnNames'), []).reflectee) {
+			Object value = im.invoke(new Symbol('get${StringFormat.titleCase(column)}'), []).reflectee;
+			if(null == value && !im.invoke(const Symbol('isColumnModified'), [column]).reflectee) {
+				continue;
+			}
+			fields.add(conn.quoteIdentifier(column));
+			values.add(value);
+			placeHolders.add('?');
+		}
+
+		String quotedTable = conn.quoteIdentifier(cm.invoke(const Symbol('getTableName'), []).reflectee);
+		String queryS = 'INSERT INTO ${quotedTable} (${fields.join(', ')}) VALUES (${placeHolders.join(', ')})';
+		//TODO: When DBPostgres gets created, enabled this code
+		/*
+		if(pk != null && isAutoIncrement() && conn is DBPostgres) {
+			queryS += ' RETURNING ${conn.quoteIdentifier(pk)}';
+		}*/
+
+		QueryStatement statement = new QueryStatement(conn);
+		statement.setString(queryS);
+		statement.setParams(values);
+
+		Completer c = new Completer();
+
+		statement.bindAndExecute().then((DDOStatement result) {
+			int count = result.rowCount();
+
+			if(pk != null && isAutoIncrement()) {
+				var id = null;
+				if(conn.isGetIdAfterInsert()) {
+					id = conn.lastInsertId();
+				}
+				if(null != id) {
+					im.invoke(new Symbol('set${StringFormat.titleCase(pk)}'), [id]);
+				}
+			}
+
+			resetModified();
+			setNew(false);
+
+			cm.invoke(const Symbol('insertIntoPool'), [this]);
+			c.complete(count);
+		});
+
+		return c.future;
+	}
+
+	Future<int> _update() {
+		if (getPrimaryKeys() == null || getPrimaryKeys().isEmpty) {
+			throw new Exception('This table has no primary keys');
+		}
+
+		InstanceMirror im = reflect(this);
+
+		Map<String, Object> columnValues = new Map<String, Object>();
+
+		for(String column in getModifiedColumns()) {
+			columnValues[column] = im.invoke(new Symbol('get${StringFormat.titleCase(column)}'), []).reflectee;
+		}
+
+		if(columnValues.isEmpty) {
+			return new Future.value(0);
+		}
+
+		Query q = new Query();
+
+		for(String pk in getPrimaryKeys()) {
+			Object pkVal = im.invoke(new Symbol('get${StringFormat.titleCase(pk)}'), []).reflectee;
+			if(pkVal == null) {
+				throw new Exception('Cannot update with NULL primary key.');
+			}
+			q.add(pk, pkVal);
+		}
+		Completer c = new Completer();
+		ClassMirror cm = im.type;
+
+		cm.invoke(const Symbol('doUpdate'), [columnValues, q]).reflectee.then((int count) {
+			resetModified();
+			c.complete(count);
+		});
+		return c.future;
+	}
 
 	Query getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]);
 

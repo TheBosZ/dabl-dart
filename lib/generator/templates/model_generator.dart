@@ -17,6 +17,14 @@ class ${className} extends base${className} {
 	static ${className} retrieveFromPool(Object pkValue) => ${baseClassName}.retrieveFromPool(pkValue);
 
 	static void insertIntoPool(${className} obj) => ${baseClassName}.insertIntoPool(obj);
+
+	static bool hasColumn(String columnName) => ${baseClassName}.hasColumn(columnName);
+
+	static List<String> getColumns() => ${baseClassName}.getColumns();
+
+	static List<String> getColumnNames() => ${baseClassName}.getColumnNames();
+
+	static String getTableName() => ${baseClassName}.getTableName();
 }
 ''';
 	}
