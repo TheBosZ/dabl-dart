@@ -6,5 +6,5 @@ dependencies:
   database_reverse_engineer:
     path: ../database_reverse_engineer
   ddo:
-    path: ../pdodart
+    path: ../pdodart/
   intl: any

@@ -82,55 +82,6 @@ abstract class Model {
     static const int MAX_INSTANCE_POOL_SIZE = 400;
 
 	/**
-	 * Cache of objects retrieved from the database
-	 */
-	static Map<String, Model> _instancePool = new Map<String, Model>();
-
-    static int _instancePoolCount = 0;
-
-    static bool _poolEnabled = true;
-
-    /**
-	 * List of objects to batch insert
-	 */
-    static List<Model> _insertBatch;
-
-    /**
-	 * Maximum size of the insert batch
-	 */
-	static int _insertBatchSize = 500;
-
-	/**
-	 * Array of all primary keys
-	 */
-	static List<String> _primaryKeys;
-
-	/**
-	 * string name of the primary key column
-	 */
-	static String _primaryKey;
-
-	/**
-	 * true if primary key is an auto-increment column
-	 */
-	static bool _isAutoIncrement = false;
-
-	/**
-	 * array of all fully-qualified(table.column) columns
-	 */
-	static List<String> _columns;
-
-	/**
-	 * array of all column names
-	 */
-	static List<String> _columnNames;
-
-	/**
-	 * array of all column types
-	 */
-	static Map<String, String> _columnTypes;
-
-	/**
 	 * Array to contain names of modified columns
 	 */
 	Set<String> modifiedColumns = new Set<String>();
@@ -162,10 +113,6 @@ abstract class Model {
 
 	String toString();
 
-	static Object create() {
-		throw new UnimplementedError('Create() not implemented yet');
-	}
-
 	/**
 	 * Whether passed type is a temporal (date/time/timestamp) type.
 	 */
@@ -189,24 +136,6 @@ abstract class Model {
 		throw new UnimplementedError('getTableName needs to be implemented on the baseModel');
 	}
 
-	static List<String> getColumnNames() {
-		return _columnNames;
-	}
-
-	static List<String> getColumns() {
-		return _columns;
-	}
-
-	static Map<String, String> getColumnTypes() {
-		return _columnTypes;
-	}
-
-	static String getColumnType(String col_name) {
-		return _columnTypes[normalizeColumnName(col_name)];
-	}
-
-	static List<String> _lowerCaseColumns = new List<String>();
-
 	static String normalizeColumnName(String columnName) {
     	int pos = columnName.lastIndexOf('.');
     	if (pos != -1) {
@@ -214,18 +143,6 @@ abstract class Model {
     	}
     	return columnName;
     }
-
-	static String getPrimaryKey() {
-		return _primaryKey;
-	}
-
-	static List<String> getPrimaryKeys() {
-		return _primaryKeys;
-	}
-
-	static bool isAutoIncrement() {
-		return _isAutoIncrement;
-	}
 
 	static Object coerceTemporalValue(Object value, String columnType, [DABLDDO conn = null]) {
 		if(null == conn) {
@@ -255,131 +172,9 @@ abstract class Model {
 				return value;
 		}
 		DateFormat formatter = new DateFormat(format);
-		return formatter.format(new DateTime.fromMillisecondsSinceEpoch(value));
-	}
-
-	static Object retrieveByColumn(String field, Object value) {
-		if(field == _primaryKey) {
-			return retrieveByPK(value);
-		}
-
-		Query q = getQuery().add(field, value).setLimit(1);
-		if(_primaryKey != null){
-			q.orderBy(_primaryKey);
-		}
-
-		return doSelectOne(q);
-	}
-
-	static Query getQuery([Map<String, Object> params = null, Query q = null]) {
-		q = q != null ? q : new Query();
-
-		if(q.getTable() == null) {
-			q.setTable(getTableName());
-		}
-
-		params.forEach((k, param) {
-			if(hasColumn(k)) {
-				q.add(k, param);
-			}
-		});
-
-		if(params.containsKey('order_by') && hasColumn(params['order_by'])) {
-			q.orderBy(params['order_by'],
-				params.containsKey('dir') && params['dir'] == Query.DESC ? Query.DESC : Query.ASC);
-		}
-
-		if(params.containsKey('limit')){
-			q.setLimit(params['limit']);
-		}
-		return q;
-	}
-
-	static Model retrieveFromPool(Object key) {
-		if(!_poolEnabled || null == key) {
-			return null;
-		}
-
-		String skey = key.toString();
-		if(_instancePool.containsKey(skey)){
-			return _instancePool[key];
-		}
-		return null;
-	}
-
-	static void removeFromPool(Object obj_or_pk) {
-		String skey;
-		if(obj_or_pk is Model) {
-			skey = obj_or_pk.getPrimaryKeyValues().join('-');
-		} else {
-			skey = obj_or_pk.toString();
-		}
-		if(_instancePool.containsKey(skey)){
-			--_instancePoolCount;
-			_instancePool.remove(skey);
-		}
-	}
-
-	static void flushPool() {
-		_instancePool = new Map<String, Model>();
-		_instancePoolCount = 0;
-	}
-
-	static void setPoolEnabled([bool enable = true]) {
-		_poolEnabled = enable;
-	}
-
-	static bool getPoolEnabled() {
-		return _poolEnabled;
-	}
-
-	static List<Model> getAll([String extra = null]) {
-		throw new UnimplementedError('Use doSelect instead');
-	}
-
-	static Future<int> doCount([Query q = null]){
-		q = q != null ? q : getQuery();
-		if(q.getTable() == null) {
-			q.setTable(getTableName());
-		}
-		return q.doCount(getConnection());
-	}
-
-	static Future<List<Model>> doSelect([Query q = null, List<Type> additional_classes = null]){
-		throw new UnimplementedError('doSelect should be overridden in child class');
-		String modelname = '';
-		if(additional_classes == null) {
-			additional_classes = new List<Type>();
-		}
-
-		additional_classes.insert(0, modelname);
-		Completer c = new Completer();
-		doSelectRS(q).then((DDOStatement result) {
-			c.complete(fromResult(result, additional_classes));
-		});
-		return c.future;
-	}
-
-	static Future<Model> doSelectOne([Query q= null, List<Type> additional_classes = null]) {
-		q = q != null ? q : getQuery();
-		q.setLimit(1);
-		Completer c = new Completer();
-		doSelect(q, additional_classes).then((List<Model> objs) {
-			c.complete(objs.first);
-		});
-		return c.future;
-	}
-
-	static Future<DDOStatement> doSelectRS([Query q = null]) {
-		q = q != null ? q : getQuery();
-		if(q.getTable() == null) {
-			q.setTable(getTableName());
-		}
-		return q.doSelect(getConnection());
-	}
-
-	static Object doSelectIterator([Query q = null]) {
-		throw new UnimplementedError();
+		DateTime dt = new DateTime.fromMillisecondsSinceEpoch(value);
+		var result = formatter.format(dt);
+		return result;
 	}
 
 	static List<Model> fromResult(DDOStatement result, List<Type> classes, [bool usePool = true]) {
@@ -392,9 +187,9 @@ abstract class Model {
 			throw new UnimplementedError('Multiple classes at once isn\'t implemented yet.');
 		} else {
 			ClassMirror cm = reflectClass(classes.first);
-			result.setFetchMode(DDO.FETCH_CLASS, classes.first);
+			result.setFetchMode(DDO.FETCH_CLASS, cm);
 			Model obj;
-			String pk;
+			String pk = '';
 			Model poolObject;
 			bool foundInPool;
 			while(false != (obj = result.fetch())) {
@@ -403,7 +198,7 @@ abstract class Model {
 				}
 				InstanceMirror im = reflect(obj);
 				if(usePool
-					&& ( pk != null || ((pk = cm.invoke(const Symbol('getPrimaryKey'), []).reflectee) != null))
+					&& ( pk != '' || ((pk = cm.invoke(const Symbol('getPrimaryKey'), []).reflectee) != ""))
 					&& ( (poolObject = cm.invoke(new Symbol('retrieveFromPool'), [im.invoke(new Symbol("get${StringFormat.titleCase(pk)}"), []).reflectee]).reflectee)) != null) {
 
         			obj = poolObject;
@@ -431,8 +226,14 @@ abstract class Model {
 		throw new UnsupportedError('doDelete needs to be overridden in the child class');
 	}
 
-	static List<Model> doUpdate(List values, [Query q = null]) {
-		throw new UnsupportedError('doUpdate needs to be overridden in the child class');
+	static Future<int> doUpdate(Map values, ClassMirror cm, [Query q = null]) {
+		q = q != null ? q.clone() : new Query();
+		DABLDDO conn = cm.invoke(const Symbol('getConnection'), []).reflectee;
+
+		if(q.getTable() == null) {
+			q.setTable(cm.invoke(const Symbol('getTableName'), []).reflectee);
+		}
+		return q.doUpdate(values, conn);
 	}
 
 	static int setInsertBatchSize([int size = 500]){
@@ -474,13 +275,13 @@ abstract class Model {
 
 	bool hasPrimaryKeyValues();
 
-	List<Object> getPrimaryKeyValues();
+	Map<String, Object> getPrimaryKeyValues();
 
 	bool validate();
 
 	List<String> getValidationErrors() => validationErrors;
 
-	int delete();
+	Future<int> delete();
 
 	Future<int> save() {
 		if (isDirty) {
@@ -491,15 +292,17 @@ abstract class Model {
 			throw new Exception('Cannot save ${runtimeType.toString()} with validation errors: ${getValidationErrors().join(', ')}');
 		}
 
+		DABLDDO conn = getConnection();
+
 		InstanceMirror im = reflect(this);
 		ClassMirror cm = im.type;
 
-		if (isNew && cm.invoke(const Symbol('hasColumn'), ['Created']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['Created']).reflectee) {
-			im.invoke(const Symbol('setCreated'), [new DateTime.now()]);
+		if (isNew && cm.invoke(const Symbol('hasColumn'), ['created']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['created']).reflectee) {
+			im.invoke(const Symbol('setCreated'), [new DateTime.now().toIso8601String()]);
 		}
 
-		if ((isNew || isModified()) && cm.invoke(const Symbol('hasColumn'), ['Updated']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['Updated']).reflectee) {
-			im.invoke(const Symbol('setUpdated'), [new DateTime.now()]);
+		if ((isNew || isModified()) && cm.invoke(const Symbol('hasColumn'), ['updated']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['updated']).reflectee) {
+			im.invoke(const Symbol('setUpdated'), [new DateTime.now().toIso8601String()]);
 		}
 
 		if (isNew){
@@ -561,10 +364,10 @@ abstract class Model {
 		statement.bindAndExecute().then((DDOStatement result) {
 			int count = result.rowCount();
 
-			if(pk != null && isAutoIncrement()) {
+			if(pk != null && cm.invoke(const Symbol('isAutoIncrement'), []).reflectee) {
 				var id = null;
 				if(conn.isGetIdAfterInsert()) {
-					id = conn.lastInsertId();
+					id = result.lastInsertId();
 				}
 				if(null != id) {
 					im.invoke(new Symbol('set${StringFormat.titleCase(pk)}'), [id]);
@@ -582,11 +385,13 @@ abstract class Model {
 	}
 
 	Future<int> _update() {
-		if (getPrimaryKeys() == null || getPrimaryKeys().isEmpty) {
+		InstanceMirror im = reflect(this);
+		ClassMirror cm = im.type;
+		List<String> pks = cm.invoke(const Symbol('getPrimaryKeys'),[]).reflectee;
+
+		if (pks == null || pks.isEmpty) {
 			throw new Exception('This table has no primary keys');
 		}
-
-		InstanceMirror im = reflect(this);
 
 		Map<String, Object> columnValues = new Map<String, Object>();
 
@@ -600,7 +405,7 @@ abstract class Model {
 
 		Query q = new Query();
 
-		for(String pk in getPrimaryKeys()) {
+		for(String pk in pks) {
 			Object pkVal = im.invoke(new Symbol('get${StringFormat.titleCase(pk)}'), []).reflectee;
 			if(pkVal == null) {
 				throw new Exception('Cannot update with NULL primary key.');
@@ -608,9 +413,9 @@ abstract class Model {
 			q.add(pk, pkVal);
 		}
 		Completer c = new Completer();
-		ClassMirror cm = im.type;
 
-		cm.invoke(const Symbol('doUpdate'), [columnValues, q]).reflectee.then((int count) {
+
+		doUpdate(columnValues, cm, q).then((int count) {
 			resetModified();
 			c.complete(count);
 		});
@@ -680,7 +485,7 @@ abstract class Model {
 
 		if(value != getColumn(columnName)) {
 			InstanceMirror im = reflect(this);
-			var name = MirrorSystem.getName(new Symbol("_${columnName}"));
+			var name = MirrorSystem.getName(new Symbol("${columnName}"));
 			var symb = MirrorSystem.getSymbol(name, currentMirrorSystem().findLibrary(new Symbol(libraryName)));
 			im.setField(symb, value);
 			modifiedColumns.add(columnName);
@@ -688,6 +493,8 @@ abstract class Model {
 
 		return this;
 	}
+
+	String getLibraryName();
 
 	static DABLDDO getConnection() {
 		return DBManager.getConnection();

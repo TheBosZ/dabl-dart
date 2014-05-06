@@ -15,53 +15,18 @@ abstract class DABLDDO extends DDO {
 		return _dbName;
 	}
 
-	DABLDDO({String dsn, String username: '', String password: '', Map<int, int> driver_options: null}) :
-		super(dsn: dsn, username: username, password: password, driver_options: driver_options);
+	DABLDDO(Driver driver) :
+		super(driver);
 
-	factory DABLDDO.factory(Map<String, String> connectionParams) {
+	factory DABLDDO.factory(Map<String, String> connectionParams, Driver driver) {
 		DABLDDO obj;
-		String dsn;
-		String user;
-		String password;
-
-		if(connectionParams.containsKey('user')) {
-			user = connectionParams['user'];
-		}
-
-		if(connectionParams.containsKey('password')) {
-			password = connectionParams['password'];
-		}
-
-		var options = {DDO.ATTR_ERRMODE: DDO.ERRMODE_EXCEPTION};
-		if(connectionParams.containsKey('persistant')) {
-			var p = connectionParams['persistant'].trim().toLowerCase();
-			switch(p) {
-				case 'true':
-				case '1':
-				case 'on':
-					options['persistant'] = true;
-					break;
-			}
-		}
 
 		switch(connectionParams['driver']) {
 			case 'mysql':
-				List<String> parts = new List<String>();
-				if(connectionParams.containsKey('host')){
-					parts.add('host=${connectionParams['host']}');
-				}
-				if(connectionParams.containsKey('port')){
-					parts.add('port=${connectionParams['port']}');
-				}
-				if(connectionParams.containsKey('unix_socket')){
-					parts.add('unix_socket=${connectionParams['unix_socket']}');
-				}
-				if(connectionParams.containsKey('dbname')){
-					parts.add('dbname=${connectionParams['dbname']}');
-				}
-				parts.map((String f) => f.replaceAll(';', r'\;'));
-				String dsn = 'mysql:${parts.join(';')}';
-				obj = new DBMySQL(dsn: dsn, username: user, password: password, driver_options: options);
+				obj = new DBMySQL(driver);
+				break;
+			case 'websql':
+				obj = new DBWebSQL(driver);
 				break;
 			default:
             	throw new ArgumentError("Unsupported database driver: '${connectionParams['driver']}'");
@@ -129,15 +94,15 @@ abstract class DABLDDO extends DDO {
 	}
 
 	String getTimestampFormatter() {
-		return 'Y-m-d H:i:s';
+		return 'y-M-d HH:mm:ss';
 	}
 
 	String getDateFormatter() {
-		return 'Y-m-d';
+		return 'y-M-d';
 	}
 
 	String getTimeFormatter() {
-		return 'H:i:s';
+		return 'HH:mm:ss';
 	}
 
 	bool useQuoteIdentifier();

@@ -1,9 +1,15 @@
 library dbmanager;
 
 import 'dabl.dart';
+import 'package:ddo/ddo.dart';
 
 Map<String, DABLDDO> _connections = new Map<String, DABLDDO>();
 Map<String, Map<String, String>> _parameters = new Map<String, Map<String, String>>();
+Driver _driver;
+
+void setDriver(Driver driver) {
+	_driver = driver;
+}
 
 void addConnection(String conn_name, Map conn_params) {
 	_parameters[conn_name] = conn_params;
@@ -51,7 +57,7 @@ DABLDDO _connect(String key) {
 		throw new Exception('Connection "${key}" has not been set');
 	}
 
-	var conn = new DABLDDO.factory(_parameters[key]);
+	var conn = new DABLDDO.factory(_parameters[key], _driver);
 	return _connections[key] = conn;
 }
 

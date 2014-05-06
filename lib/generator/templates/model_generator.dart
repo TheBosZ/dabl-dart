@@ -25,6 +25,12 @@ class ${className} extends base${className} {
 	static List<String> getColumnNames() => ${baseClassName}.getColumnNames();
 
 	static String getTableName() => ${baseClassName}.getTableName();
+
+	static List<String> getPrimaryKeys() => ${baseClassName}.getPrimaryKeys();
+
+	static bool isAutoIncrement() => ${baseClassName}.isAutoIncrement;
+
+	static DABLDDO getConnection() => ${baseClassName}.getConnection();
 }
 ''';
 	}

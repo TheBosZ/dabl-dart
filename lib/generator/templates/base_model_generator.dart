@@ -67,28 +67,28 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Name of the table
 	 */
-	static const String _tableName = '${tableName}';
+	static const String tableName = '${tableName}';
 
 	/**
 	 * Cache of objects retrieved from the database
 	 */
-	static Map<String, ${className}> _instancePool = new Map<String, ${className}>();
+	static Map<String, ${className}> instancePool = new Map<String, ${className}>();
 
-	static int _instancePoolCount = 0;
+	static int instancePoolCount = 0;
 
-	static bool _poolEnabled = true;
+	static bool poolEnabled = true;
 
 	/**
 	 * List of objects to batch insert
 	 */
-	static List<${className}> _insertBatch = new List<${className}>();
+	static List<${className}> insertBatchCache = new List<${className}>();
 
-	static int _insertBatchSize = 500;
+	static int insertBatchSize = 500;
 
 	/**
 	 * List of all primary keys
 	 */
-	static final List<String> _primaryKeys = [
+	static final List<String> primaryKeys = [
 ''');
 		if(PKs.isNotEmpty) {
 			for(Column thePk in PKs) {
@@ -101,17 +101,17 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * string name of the primary key column
 	 */
-	static const String _primaryKey = '${PK != null ? PK.getName() : ''}';
+	static const String primaryKey = '${PK != null ? PK.getName() : ''}';
 
 	/**
 	 * true if primary key is an auto-increment column
 	 */
-	static const bool _isAutoIncrement = ${autoIncrement.toString()};
+	static const bool isAutoIncrement = ${autoIncrement.toString()};
 
 	/**
 	 * List of all fully-qualified(table.column) columns
 	 */
-	static final List<String> _columns = [
+	static final List<String> columns = [
 ''');
 		for(Column field in fields) {
 			result.write('\t\t${baseClassName}.${StringFormat.constant(field.getName())},\n');
@@ -122,7 +122,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * List of all column names
 	 */
-	static final List<String> _columnNames = [
+	static final List<String> columnNames = [
 ''');
 		for(Column field in fields) {
 			result.write('\t\t\'${field.getName()}\',\n');
@@ -133,7 +133,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * map of all column types
 	 */
-	static final Map<String, String> _columnTypes = {
+	static final Map<String, String> columnTypes = {
 ''');
 		for(Column field in fields) {
 			result.write("\t\t'${field.getName()}': Model.COLUMN_TYPE_${field.getType()},\n");
@@ -167,7 +167,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			if(field.isNumericType() && isInt(def) && def != null) {
 				def = null;
 			}
-			result.write('\t${field.getDartType()} _${field.getName()}');
+			result.write('\t${field.getDartType()} ${field.getName()}');
 			if(field.isNumericType() && def != null) {
 				result.write(' = ${def}');
 			} else if(def != null && def.toLowerCase() != null) {
@@ -177,7 +177,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		}
 		//Getters and setters
 		for(Column field in fields) {
-			String privateName = "_${field.getName()}";
+			String privateName = "${field.getName()}";
 			String def = field.getDefaultValue() != null && field.getDefaultValue().getValue() != 'null' ? field.getDefaultValue().getValue() : null;
             String methodName = StringFormat.titleCase(field.getName());
             String params = '';
@@ -283,31 +283,56 @@ abstract class ${baseClassName} extends ApplicationModel {
 
 	static ${className} create() => new ${className}();
 
-	static String getTableName() => ${baseClassName}._tableName;
+	static Query getQuery([Map params = null, Query q = null]) {
+		q = q != null ? q.clone() : new Query();
+		if(q.getTable() == null) {
+			q.setTable(${baseClassName}.getTableName());
+		}
 
-	static List<String> getColumnNames() => ${baseClassName}._columnNames;
+		if(params == null) {
+			params = new Map();
+		}
 
-	static List<String> getColumns() => ${baseClassName}._columns;
+		//filters
+		for(Object k in params.keys) {
+			if(${baseClassName}.hasColumn(k)) {
+				q.add(k, params[k]);
+			}
+		}
 
-	static Map<String, String> getColumnTypes() => ${baseClassName}._columnTypes;
+		//order_by
+		if(params.containsKey('order_by') && ${baseClassName}.hasColumn(params['order_by'])) {
+			q.orderBy(params['order_by'], params.containsKey('dir') ? Query.DESC : Query.ASC);
+		}
 
-	static String getColumnType(String columnName) => ${baseClassName}._columnTypes[${baseClassName}.normalizeColumnName(columnName)];
+		return q;
+	}
+
+	static String getTableName() => ${baseClassName}.tableName;
+
+	static List<String> getColumnNames() => ${baseClassName}.columnNames;
+
+	static List<String> getColumns() => ${baseClassName}.columns;
+
+	static Map<String, String> getColumnTypes() => ${baseClassName}.columnTypes;
+
+	static String getColumnType(String columnName) => ${baseClassName}.columnTypes[${baseClassName}.normalizeColumnName(columnName)];
 
 	static List<String> _columnsCache = new List<String>();
 
 	static bool hasColumn(String columnName) {
 		
-		if (null == _columnsCache) {
-			_columnsCache = ${baseClassName}._columnNames.map((String s) => s.toLowerCase()).toList();
+		if (null == _columnsCache || _columnsCache.isEmpty) {
+			_columnsCache = ${baseClassName}.columnNames.map((String s) => s.toLowerCase()).toList();
 		}
 		return _columnsCache.contains(${baseClassName}.normalizeColumnName(columnName).toLowerCase());
 	}
 
-	static List<String> getPrimaryKeys() => ${baseClassName}._primaryKeys;
+	static List<String> getPrimaryKeys() => ${baseClassName}.primaryKeys;
 
-	static String getPrimaryKey() => ${baseClassName}._primaryKey;
+	static String getPrimaryKey() => ${baseClassName}.primaryKey;
 
-	static bool isAutoIncrement() => ${baseClassName}._isAutoIncrement;
+	//static bool isAutoIncrement() => ${baseClassName}.isAutoIncrement;
 
 	static String normalizeColumnName(String columnName) => Model.normalizeColumnName(columnName);
 
@@ -332,7 +357,9 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * the ones input
 	 */
 	static Future<${className}> retrieveByPKs(''');
-		result.write(PKs.map((Column v) => "${v.getDartType()} ${StringFormat.variable(v.getName())}").join(', '));
+		var args = PKs.map((Column v) => "${v.getDartType()} ${StringFormat.variable(v.getName())}");
+		var vars = PKs.map((Column v) => StringFormat.variable(v.getName()));
+		result.write(args.join(', '));
 		result.write(') {\n');
 		if(PKs.length == 0) {
 			result.write("\t\tthrow new Exception('This table does not have any primary keys');\n");
@@ -345,12 +372,12 @@ abstract class ${baseClassName} extends ApplicationModel {
 ''');
 			}
 			result.write('''
-		if(${baseClassName}._poolEnabled) {
+		if(${baseClassName}.poolEnabled) {
 			${className} poolInstance = ${baseClassName}.retrieveFromPool(''');
 			if(1 == PKs.length) {
 				result.write(StringFormat.variable(PK.getName()));
 			} else {
-				result.write(PKs.map((Column v) => StringFormat.variable(v.getName())).join('-'));
+				result.write("[${vars.join(', ')}].join('-')");
 			}
 			result.write(''');
 			if(null != poolInstance) {
@@ -417,7 +444,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 */
 	static List<${className}> fromResult(DDOStatement result, [List<Type> classNames = null, bool usePool = null]) {
 		if (null == usePool) {
-			usePool = ${baseClassName}._poolEnabled;
+			usePool = ${baseClassName}.poolEnabled;
 		}
 
 		if(classNames == null) {
@@ -440,7 +467,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 ''');
 		for(Column field in fields) {
 			if(Model.isIntegerType(field.getType())) {
-				result.write("\t\t${field.getName()} = (null == ${field.getName()}) ? null : int.parse(_${field.getName()});\n");
+				result.write("\t\t${field.getName()} = (null == ${field.getName()}) ? null : int.parse(${field.getName()});\n");
 			}
 		}
 		result.write('''
@@ -452,7 +479,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Add (or replace) to the instance pool
 	 */
 	static void insertIntoPool(${className} obj) {
-		if(!${baseClassName}._poolEnabled) {
+		if(!${baseClassName}.poolEnabled) {
 			return;
 		}
 ''');
@@ -463,12 +490,12 @@ abstract class ${baseClassName} extends ApplicationModel {
 ''');
 		} else {
 		result.write('''
-		if (${baseClassName}._instancePoolCount > Model.MAX_INSTANCE_POOL_SIZE) {
+		if (${baseClassName}.instancePoolCount > Model.MAX_INSTANCE_POOL_SIZE) {
 			return;
 		}
 
-		${baseClassName}._instancePool[obj.getPrimaryKeyValues().join('-')] = obj;
-		${baseClassName}._instancePoolCount = ${baseClassName}._instancePool.length;
+		${baseClassName}.instancePool[obj.getPrimaryKeyValues().values.join('-')] = obj;
+		${baseClassName}.instancePoolCount = ${baseClassName}.instancePool.length;
 ''');
 		}
 		result.write('''
@@ -478,12 +505,12 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Return the cached instance from the pool
 	 */
 	static ${className} retrieveFromPool(Object pkValue) {
-		if(!${baseClassName}._poolEnabled || null == pkValue) {
+		if(!${baseClassName}.poolEnabled || null == pkValue) {
 			return null;
 		}
 		String key = pkValue.toString();
-		if(_instancePool.containsKey(key)) {
-			return _instancePool[key];
+		if(instancePool.containsKey(key)) {
+			return instancePool[key];
 		}
 		return null;
 	}
@@ -492,23 +519,23 @@ abstract class ${baseClassName} extends ApplicationModel {
 	 * Remove the object from the instance pool.
 	 */
 	static void removeFromPool(Object obj) {
-		String pk = (obj is Model) ? obj.getPrimaryKeyValues().join('-') : obj.toString();
-		if(${baseClassName}._instancePool.containsKey(pk)) {
-			${baseClassName}._instancePool.remove(pk);
-			${baseClassName}._instancePoolCount = ${baseClassName}._instancePool.length;
+		String pk = (obj is Model) ? obj.getPrimaryKeyValues().values.join('-') : obj.toString();
+		if(${baseClassName}.instancePool.containsKey(pk)) {
+			${baseClassName}.instancePool.remove(pk);
+			${baseClassName}.instancePoolCount = ${baseClassName}.instancePool.length;
 		}
 	}
 
 	/**
 	 * Empty the instance pool.
 	 */
-	static void flushPool() => ${baseClassName}._instancePool.clear();
+	static void flushPool() => ${baseClassName}.instancePool.clear();
 
 	static void setPoolEnabled([bool b = true]) {
-		${baseClassName}._poolEnabled = b;
+		${baseClassName}.poolEnabled = b;
 	}
 	
-	static bool getPoolEnabled() => ${baseClassName}._poolEnabled;
+	static bool getPoolEnabled() => ${baseClassName}.poolEnabled;
 	
 	static Future<int> doCount([Query q = null]) {
 		q = q != null ? q.clone() : new Query();
@@ -550,7 +577,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		q.setLimit(1);
 		Completer c = new Completer();
 		${baseClassName}.doSelect(q, additionalClasses).then((List<${className}> objs) {
-			c.complete(objs.first);
+			c.complete(objs.isNotEmpty ? objs.first : null);
 		});
 		return c.future;
 	}
@@ -569,23 +596,23 @@ abstract class ${baseClassName} extends ApplicationModel {
 	/**
 	 * Set the maximum insert batch size, once this size is reached the batch automatically inserts.
 	 */
-	static int setInsertBatchSize([int size = 500]) => ${baseClassName}._insertBatchSize = size;
+	static int setInsertBatchSize([int size = 500]) => ${baseClassName}.insertBatchSize = size;
 	
 	/**
 	 * Queue for batch insert
 	 */
 	${className} queueForInsert() {
-		if(${baseClassName}._insertBatch.length >= ${baseClassName}._insertBatchSize) {
+		if(${baseClassName}.insertBatchCache.length >= ${baseClassName}.insertBatchSize) {
 			${baseClassName}.insertBatch();
 		}
 
-		${baseClassName}._insertBatch.add(this);
+		${baseClassName}.insertBatchCache.add(this);
 
 		return this;
 	}
 
 	static Future<int> insertBatch() {
-		if (${baseClassName}._insertBatch.isEmpty) {
+		if (${baseClassName}.insertBatchCache.isEmpty) {
 			return new Future.value(0);
 		}
 
@@ -609,23 +636,24 @@ abstract class ${baseClassName} extends ApplicationModel {
 		queryS.add('INSERT INTO \${quotedTable} (\${columns.map((String s) => conn.quoteIdentifier(s)).join(', ')}) VALUES');
 
 		List<String> placeHolders;
-		for(${className} obj in ${baseClassName}._insertBatch) {
+		
+		for(${className} obj in ${baseClassName}.insertBatch) {
 			placeHolders = new List<String>();
 
 			if (!obj.validate()) {
 				throw new Exception('Cannot save ${className} with validation errors: \${obj.getValidationErrors().join(', ')}');
 			}
 ''');
-		if(fields.where((Column c) => c.getName() == 'Created').isNotEmpty) {
+		if(fields.where((Column c) => c.getName() == 'created').isNotEmpty) {
 			result.write('''
-			if (obj.isNew && ${baseClassName}.hasColumn('Created') && !obj.isColumnModified('Created')) {
+			if (obj.isNew && ${baseClassName}.hasColumn('created') && !obj.isColumnModified('created')) {
 				obj.setCreated(new DateTime.now().toIso8601String());
 			}
 ''');
 		}
-		if(fields.where((Column c) => c.getName() == 'Updated').isNotEmpty) {
+		if(fields.where((Column c) => c.getName() == 'updated').isNotEmpty) {
         			result.write('''
-			if ((obj.isNew || obj.isModified()) && ${baseClassName}.hasColumn('Updated') && !obj.isColumnModified('Updated')) {
+			if ((obj.isNew || obj.isModified()) && ${baseClassName}.hasColumn('updated') && !obj.isColumnModified('updated')) {
 				obj.setUpdated(new DateTime.now().toIso8601String());
 			}
 ''');
@@ -653,7 +681,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 		statement.setParams(values);
 		Completer c = new Completer();
 		statement.bindAndExecute().then((DDOStatement results) {
-			for (${className} obj in ${baseClassName}._insertBatch) {
+			for (${className} obj in ${baseClassName}.insertBatch) {
 				obj.setNew(false);
 				obj.resetModified();
 				if(obj.hasPrimaryKeyValues()) {
@@ -662,7 +690,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 					obj.setDirty(true);
 				}
 			}
-			${baseClassName}._insertBatch.clear();
+			${baseClassName}.insertBatchCache.clear();
 			c.complete(results.rowCount());
 		});
 		return c.future;
@@ -747,9 +775,9 @@ abstract class ${baseClassName} extends ApplicationModel {
 			}
 			String fkProperty;
 			if(!fkIsPk) {
-				fkProperty = "_${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}";
+				fkProperty = "${toClassName}RelatedBy${StringFormat.titleCase(fromColumn)}";
 				result.write('''
-		${toClassName} _${fkProperty};
+		${toClassName} ${fkProperty};
 ''');
 			}
 			if(namedId) {
@@ -960,7 +988,7 @@ abstract class ${baseClassName} extends ApplicationModel {
 			String tcToColumn = StringFormat.titleCase(toColumn);
 			String tcFromColumn = StringFormat.titleCase(fromColumn);
 			String tcFromClassName = StringFormat.titleCase(fromClassName);
-			String cacheProperty = "_${fromClassName}sRelatedBy${tcFromColumn}_c";
+			String cacheProperty = "${fromClassName}sRelatedBy${tcFromColumn}_c";
 			String cacheGetMethodNameQuery = "get${tcFromClassName}sRelatedBy${tcFromColumn}Query";
 			String cacheCountMethodName = "count${tcFromClassName}sRelatedBy${tcFromColumn}";
 			String cacheDeleteMethodName = "delete${tcFromClassName}sRelatedBy${tcFromColumn}";
@@ -1158,6 +1186,38 @@ abstract class ${baseClassName} extends ApplicationModel {
 		return validationErrors.isEmpty;
 	}
 
+	/**
+	 * Creates and executess DELETE Query for this object
+	 * Deletes any database rows with a primary key(s) that match $this
+	 * NOTE/BUG: If you alter pre-existing primary key(s) before deleting, then you will be
+	 * deleting based on the new primary key(s) and not the originals,
+	 * leaving the original row unchanged(if it exists).  Also, since NULL isn't an accurate way
+	 * to look up a row, I return if one of the primary keys is null.
+	 * @return int number of records deleted
+	 */
+	Future<int> delete() {
+		Map<String, Object> pks = getPrimaryKeyValues();
+		if(pks == null || pks.isEmpty) {
+			throw new Exception('This table has no primary keys');
+		}
+		Query q = ${baseClassName}.getQuery();
+		for(String pk in pks.keys) {
+			var pkVal = pks[pk];
+			if(pkVal == null || pkVal.isEmpty) {
+				throw new Exception('Cannot delete using NULL primary key.');
+			}
+			q.addAnd(pk, pkVal);
+		}
+		q.setTable(${baseClassName}.getTableName());
+		Completer c = new Completer();
+		${baseClassName}.doDelete(q, false).then((int cnt) {
+			${baseClassName}.removeFromPool(this);
+			c.complete(cnt);
+		});
+		return c.future;
+			
+	}
+
 	Query getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]) {
 		Object value = getColumn(localColumn);
 		if (null == value) {
@@ -1183,14 +1243,14 @@ abstract class ${baseClassName} extends ApplicationModel {
 		return setColumnValueByLibrary(columnName, value, '${baseGenerator.getProjectName()}', columnType);
 	}
 
-	List<Object> getPrimaryKeyValues() {
-	    List<String> vals = new List<String>();
+	Map<String, Object> getPrimaryKeyValues() {
+	    Map<String, Object> vals = new Map<String, Object>();
 	    InstanceMirror im = reflect(this);
 
 		 for(String pk in getPrimaryKeys()) {
-	    	var name = MirrorSystem.getName(new Symbol("_\${pk}"));
+	    	var name = MirrorSystem.getName(new Symbol("\${pk}"));
 	    	var symb = MirrorSystem.getSymbol(name, currentMirrorSystem().findLibrary(new Symbol('${baseGenerator.getProjectName()}')));
-	    	vals.add(im.getField(symb).reflectee.toString());
+	    	vals[pk] = im.getField(symb).reflectee.toString();
 	    }
 	    return vals;
 	}

@@ -2,9 +2,8 @@ part of dabl;
 
 class DBMySQL extends DABLDDO {
 
-	DBMySQL({String dsn, String username: '', String password: '', Map<int, int> driver_options: null}) :
-    	super(dsn: dsn, username: username, password: password, driver_options: driver_options);
-
+	DBMySQL(Driver driver) :
+    	super(driver);
 
 	int _transactionDepth = 0;
 
