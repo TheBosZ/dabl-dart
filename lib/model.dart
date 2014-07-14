@@ -503,4 +503,8 @@ abstract class Model {
 	static Model retrieveByPK(Object id) {
 		throw new UnsupportedError('retrieveByPK needs to be overridden in child class');
 	}
+
+	static String getColumnType(String columnName) {
+		throw new UnsupportedError('getColumnType needs to be overridden in child class');
+	}
 }
