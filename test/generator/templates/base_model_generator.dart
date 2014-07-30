@@ -1,7 +1,6 @@
 import 'package:dabl/dabl.dart';
 import 'package:dabl/string_format.dart';
-import 'package:dabl/dbmanager.dart' as DBManager;
-import '../../../packages/unittest/unittest.dart';
+import 'package:unittest/unittest.dart';
 import 'dart:io';
 import 'package:dabl/generator/generator.dart';
 
@@ -14,7 +13,7 @@ main() {
    		'password': 'password'
    	};
    	DBManager.addConnection('hoffman', conn_params);
-   	DefaultGenerator dg = new DefaultGenerator('hoffman');
+   	DefaultGenerator dg = new DefaultGenerator('people');
    	dg.getBaseModel('task').then((String str){
    		File output = new File('output.dart');
     	output.writeAsStringSync(str);

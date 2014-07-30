@@ -17,30 +17,28 @@ main() {
 	test('classMethod', (){
 		expect(StringFormat.classMethod('TEST CLASS METHOD'), equals('testClassMethod'));
 	});
-	/*
+
 	test('pluralClassMethod', (){
 		expect(StringFormat.pluralClassMethod('TEST CLASS METHOD'), equals('testClassMethods'));
-	});*/
+	});
 
 
 	test('classProperty', (){
 		expect(StringFormat.classProperty('TEST CLASS PROPERTY'), equals('testClassProperty'));
 	});
 
-	/* test('pluralClassProperty', (){
-	 * 	expect(StringFormat.pluralClassProperty('TEST CLASS PROPERTY'), equals('testClassProperites'));
-	 * });
-	 *
-	 */
+	 test('pluralClassProperty', (){
+	 	expect(StringFormat.pluralClassProperty('TEST CLASS PROPERTY'), equals('testClassProperties'));
+	 });
 
 	test('url', (){
 		expect(StringFormat.url('Action_Name'), equals('action-name'));
 	});
 
-	/*
+
 	test('pluralUrl', (){
 		expect(StringFormat.pluralUrl('ACTION_NAME'), equals('action-names'));
-	});*/
+	});
 
 	test('variable', (){
 		expect(StringFormat.variable('HELLO how are you'), equals('hello_how_are_you'));
@@ -64,10 +62,10 @@ main() {
 		expect(StringFormat.getWords('45times'), equals(['45', 'times']));
 	});
 
-	/*
+
 	test('plural', (){
 		expect(StringFormat.plural('ox'), equals('oxen'));
-	});*/
+	});
 
 	test('removeAccents', (){
 		String badStr = 'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝßàáâãäåæçèéêëìíîïñòóôõöøùúûüýÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĹĺĻļĽľĿŀŁłŃńŅņŇňŉŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſƒƠơƯưǍǎǏǐǑǒǓǔǕǖǗǘǙǚǛǜǺǻǼǽǾǿ';

@@ -7,7 +7,7 @@ class StringFormat {
 
 	static String classProperty(String string) => StringFormat.lcFirst(StringFormat.titleCase(string));
 
-	static String pluralClassPropety(String string) =>
+	static String pluralClassProperty(String string) =>
 		StringFormat.lcFirst(StringFormat.plural(StringFormat.titleCase(string)));
 
 	static String url(String string) => StringFormat.variable(string).replaceAll('_','-');
@@ -36,36 +36,42 @@ class StringFormat {
 
 	static String plural(String string) {
 		Map<RegExp, String> plural = {
-			new RegExp(r'(quiz)$', caseSensitive: false): r"zes",
-			new RegExp(r'^(ox)$', caseSensitive: false): r"en",
-			new RegExp(r'([m|l])ouse$', caseSensitive: false): r"ice",
-			new RegExp(r'(matr|vert|ind)ix|ex$', caseSensitive: false): r"ices",
-			new RegExp(r'(x|ch|ss|sh)$', caseSensitive: false): r"es",
-			new RegExp(r'([^aeiouy]|qu)y$', caseSensitive: false): r"ies",
-			new RegExp(r'([^aeiouy]|qu)ies$', caseSensitive: false): r"y",
-			new RegExp(r'(hive|move)$', caseSensitive: false): r"s",
-			new RegExp(r'(?:([^f])fe|([lr])f)$', caseSensitive: false): r"$2ves",
+			new RegExp(r'(quiz)$', caseSensitive: false): r"$1zes",
+			new RegExp(r'^(ox)$', caseSensitive: false): r"$1en",
+			new RegExp(r'([m|l])ouse$', caseSensitive: false): r"$1ice",
+			new RegExp(r'(matr|vert|ind)ix|ex$', caseSensitive: false): r"$1ices",
+			new RegExp(r'(x|ch|ss|sh)$', caseSensitive: false): r"$1es",
+			new RegExp(r'([^aeiouy]|qu)y$', caseSensitive: false): r"$1ies",
+			new RegExp(r'([^aeiouy]|qu)ies$', caseSensitive: false): r"$1y",
+			new RegExp(r'(hive|move)$', caseSensitive: false): r"$1s",
+			new RegExp(r'(?:([^f])fe|([lr])f)$', caseSensitive: false): r"$1$2ves",
 			new RegExp(r'sis$', caseSensitive: false): "ses",
-			new RegExp(r'([ti])um$', caseSensitive: false): r"a",
-			new RegExp(r'(buffal|tomat)o$', caseSensitive: false): r"oes",
-			new RegExp(r'(bu)s$', caseSensitive: false): r"ses",
-			new RegExp(r'(alias|status|campus)$', caseSensitive: false): r"es",
-			new RegExp(r'(octop|cact|vir)us$', caseSensitive: false): r"i",
-			new RegExp(r'(ax|test)is$', caseSensitive: false): r"es",
-			new RegExp(r'^(m|wom)an$', caseSensitive: false): r"en",
-			new RegExp(r'(child)$', caseSensitive: false): r"ren",
-			new RegExp(r'(p)erson$', caseSensitive: false): r"eople",
-			new RegExp(r's$', caseSensitive: false): r"s",
-			new RegExp(r'$/'): r"s",
+			new RegExp(r'([ti])um$', caseSensitive: false): r"$1a",
+			new RegExp(r'(buffal|tomat)o$', caseSensitive: false): r"$1oes",
+			new RegExp(r'(bu)s$', caseSensitive: false): r"$1ses",
+			new RegExp(r'(alias|status|campus)$', caseSensitive: false): r"$1es",
+			new RegExp(r'(octop|cact|vir)us$', caseSensitive: false): r"$1i",
+			new RegExp(r'(ax|test)is$', caseSensitive: false): r"$1es",
+			new RegExp(r'^(m|wom)an$', caseSensitive: false): r"$1en",
+			new RegExp(r'(child)$', caseSensitive: false): r"$1ren",
+			new RegExp(r'(p)erson$', caseSensitive: false): r"$1eople",
+			new RegExp(r's$', caseSensitive: false): r"$1s",
+			new RegExp(r'$/'): r"$1s",
 			};
 
 		List<String> words = StringFormat.getWords(string);
-		String word = words.first;
+		String word = words.last;
 
 		for(RegExp pattern in plural.keys) {
 			if(pattern.hasMatch(word)) {
 				String prefix = string.substring(0, string.lastIndexOf(word));
-				return "${prefix}${word.replaceAll(pattern, plural[pattern])}";
+				int ind = 1;
+				String replaced = plural[pattern];
+				for(Match match in pattern.allMatches(word)) {
+					replaced = replaced.replaceAll("\$${ind}", match.input);
+					++ind;
+				}
+				return "${prefix}${replaced}";
 			}
 		}
 		return "${string}s";
