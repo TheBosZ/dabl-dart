@@ -1,7 +1,8 @@
-import '../../../lib/dabl.dart';
-import '../../../lib/string_format.dart';
+import 'package:dabl/dabl.dart';
+import 'package:dabl/string_format.dart';
 import 'package:unittest/unittest.dart';
 import 'dart:io';
+import 'package:dabl/generator/generator.dart';
 
 main() {
    	Map<String, String> conn_params = {
