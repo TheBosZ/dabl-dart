@@ -1,3 +1,4 @@
+
 class StringFormat {
 	static String className(String string) => StringFormat.titleCase(string);
 
@@ -41,7 +42,7 @@ class StringFormat {
 			new RegExp(r'([m|l])ouse$', caseSensitive: false): r"$1ice",
 			new RegExp(r'(matr|vert|ind)ix|ex$', caseSensitive: false): r"$1ices",
 			new RegExp(r'(x|ch|ss|sh)$', caseSensitive: false): r"$1es",
-			new RegExp(r'([^aeiouy]|qu)y$', caseSensitive: false): r"$1ies",
+			new RegExp(r'(([^aeiouy]|qu).*)y$', caseSensitive: false): r"$1ies",
 			new RegExp(r'([^aeiouy]|qu)ies$', caseSensitive: false): r"$1y",
 			new RegExp(r'(hive|move)$', caseSensitive: false): r"$1s",
 			new RegExp(r'(?:([^f])fe|([lr])f)$', caseSensitive: false): r"$1$2ves",
@@ -68,7 +69,7 @@ class StringFormat {
 				int ind = 1;
 				String replaced = plural[pattern];
 				for(Match match in pattern.allMatches(word)) {
-					replaced = replaced.replaceAll("\$${ind}", match.input);
+					replaced = replaced.replaceAll("\$${ind}", match.group(ind));
 					++ind;
 				}
 				return "${prefix}${replaced}";

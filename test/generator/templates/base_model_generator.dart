@@ -12,7 +12,6 @@ main() {
    		'user': 'root',
    		'password': 'password'
    	};
-   	DBManager.addConnection('hoffman', conn_params);
    	DefaultGenerator dg = new DefaultGenerator('people');
    	dg.getBaseModel('task').then((String str){
    		File output = new File('output.dart');
