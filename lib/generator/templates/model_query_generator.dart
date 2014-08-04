@@ -5,6 +5,6 @@ class ModelQueryGenerator extends FileGenerator {
 	String modelName;
 
 	String getFileContents() {
-
+		throw new UnimplementedError();
 	}
 }

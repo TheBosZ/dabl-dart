@@ -6,17 +6,15 @@ import 'package:ddo/drivers/ddo_mysql.dart';
 void main() {
 	Map<String, String> conn_params = {
 		'driver': 'mysql',
-		'host': '127.0.0.1',
-		'dbname': 'hoffman_ssm',
-		'user': 'hoffman',
-		'password': 'G00bers!'
-	};
-	addConnection('hoffman', conn_params);
-
+   		'host': '127.0.0.1',
+   		'dbname': 'test',
+   		'user': 'test_user',
+   		'password': 'test'
+   	};
 	Driver driver = new DDOMySQL(conn_params['host'], conn_params['dbname'], conn_params['user'], conn_params['password']);
-	setDriver(driver);
+	addConnection('test', driver);
 
-	DABLDDO conn = getConnection('hoffman');
+	DABLDDO conn = getConnection('test');
 
 
 	conn.getDatabaseSchema().then((Database db) {

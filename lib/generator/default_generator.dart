@@ -4,6 +4,7 @@ class DefaultGenerator extends BaseGenerator {
   DefaultGenerator(String connectionName) : super(connectionName);
 
 	Map<String, String> getActions(String tableName) {
+		throw new UnimplementedError();
 		String single = StringFormat.variable(tableName);
 		List<Column> pks = getPrimaryKeys(tableName);
 		Column pk;

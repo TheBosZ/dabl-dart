@@ -20,6 +20,7 @@ class DBWebSQL extends DABLDDO {
 
 	@override
 	Future<Database> getDatabaseSchema() {
+		throw new UnimplementedError();
 		// TODO: implement getDatabaseSchema
 	}
 

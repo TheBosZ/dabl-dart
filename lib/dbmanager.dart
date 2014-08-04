@@ -11,8 +11,9 @@ void setDriver(Driver driver) {
 	_driver = driver;
 }
 
-void addConnection(String conn_name, Map conn_params) {
-	_parameters[conn_name] = conn_params;
+void addConnection(String conn_name, Driver driver) {
+	setDriver(driver);
+	_parameters[conn_name] = driver.dbinfo;
 }
 
 DABLDDO getConnection([String db_name = null]){
