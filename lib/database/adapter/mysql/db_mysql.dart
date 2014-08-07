@@ -31,7 +31,7 @@ class DBMySQL extends DABLDDO {
 
 	Object quoteIdentifier(Object t) {
 		if(t is List) {
-			return t.map((s) => quoteIdentifier(s));
+			return t.map((s) => quoteIdentifier(s)).toList();
 		}
 		if(t is String) {
 			if(t.contains(new RegExp(r'[` (\*]'))) {
@@ -95,20 +95,5 @@ class DBMySQL extends DABLDDO {
 			return super.rollBack();
 		}
 		return exec("ROLLBACK TO SAVEPOINT LEVEL${_transactionDepth}");
-	}
-
-	Future<Database> getDatabaseSchema() {
-		MysqlSchemaParser parser = new MysqlSchemaParser(this);
-		Database db = new Database(getDBName());
-		MysqlPlatform platform = new MysqlPlatform(this);
-		platform.setDefaultTableEngine('InnoDB');
-		db.setPlatform(platform);
-		Completer c = new Completer();
-		parser.parse(db).then((_) {
-			db.doFinalInitialization();
-			c.complete(db);
-		});
-
-		return c.future;
 	}
 }

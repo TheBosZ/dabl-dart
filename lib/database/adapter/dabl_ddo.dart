@@ -110,6 +110,4 @@ abstract class DABLDDO extends DDO {
 	String applyLimit(String sql, int offset, int limit);
 
 	String random([int seed = null]);
-
-	Future<Database> getDatabaseSchema();
 }

@@ -1,6 +1,5 @@
 import "package:dabl_query/query.dart";
 import 'lib/dabl.dart';
-import 'package:database_reverse_engineer/database_reverse_engineer.dart';
 import 'lib/dbmanager.dart';
 import 'package:ddo/drivers/ddo_mysql.dart';
 void main() {
@@ -15,9 +14,10 @@ void main() {
 	addConnection('test', driver);
 
 	DABLDDO conn = getConnection('test');
-
-
-	conn.getDatabaseSchema().then((Database db) {
-		print(db.toString());
+	Query q = new Query();
+	q.setTable('task');
+	q.doSelect(conn).then((DDOStatement stmt) {
+		var results = stmt.fetchAll(DDO.FETCH_ASSOC);
+		print(results);
 	});
 }

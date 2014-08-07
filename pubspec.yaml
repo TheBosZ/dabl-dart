@@ -1,10 +1,11 @@
 name: dabl
-version: 0.1.0
+version: 0.1.1
 author: Nathan Kerr <nathankerr@gmail.com>
 description: A port of the Dabl ORM to Dart.
 homepage: https://github.com/TheBosZ/dabl-dart
 dependencies:
-  dabl_query: '>=0.1.0 <0.2.0'
-  database_reverse_engineer: '>=0.1.1 <0.2.0'
-  ddo: '>=0.2.3 <0.3.0'
-  intl: '>=0.9.8 <0.10.0'
+  dabl_query:
+    path: ../dabl-query
+  ddo:
+    path: ../pdodart
+  intl: '>=0.8.7 <0.10.0'

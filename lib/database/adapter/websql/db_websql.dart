@@ -19,12 +19,6 @@ class DBWebSQL extends DABLDDO {
 	}
 
 	@override
-	Future<Database> getDatabaseSchema() {
-		throw new UnimplementedError();
-		// TODO: implement getDatabaseSchema
-	}
-
-	@override
 	String ignoreCase(String s) {
 		return toUpperCase(s);
 	}
