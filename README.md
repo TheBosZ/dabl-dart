@@ -22,7 +22,7 @@ For this document, let's assume we have two tables. One table is "User" with the
 Any operation that has to talk to the database will return a [Future](https://www.dartlang.org/docs/tutorials/futures/). Make sure that your code can handle async operations. 
 
 ### Creation
-To create a new record, just create a new object, set the desired fields and then call "save":
+To create a new record, just create a new object, set the desired fields and then call "save".
 
 ```dart
 User user = new User();
