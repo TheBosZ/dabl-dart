@@ -6,6 +6,9 @@ Dart programming language port of [DABL](https://github.com/ManifestWebDesign/DA
 ## About
 DABL is a database ORM that builds uses classes to represent and interact with each table in your database. Using these classes, table rows can be created, retrieved, updated, deleted, and counted using very simple and short commands without writing raw SQL (unless you want to). DABL is designed to make the repetitive tasks of database access easier using objects.  DABL also recognizes foreign key relationships and automatically creates class methods for them.
 
+## Full example project
+For an example project that uses DABL, please see [Rollcall](https://github.com/TheBosZ/rollcall): a simple AngularDart app to take roll for a class or meeting.
+
 ## Installing
 Add a reference to "dabl" in the project's "pubspec.yaml" and run "pub install".
 
