@@ -18,15 +18,11 @@ class DBMySQL extends DABLDDO {
 	String strLength(String s) => "CHAR_LENGTH(${s})";
 
 	Future lockTable(String table) {
-		Completer c = new Completer();
-		exec("LOCK TABLE ${table} WRITE").then((_) => c.complete());
-		return c.future;
+		return exec("LOCK TABLE ${table} WRITE");
 	}
 
 	Future unlockTable(String table) {
-		Completer c = new Completer();
-		exec("UNLOCK TABLES").then((_) => c.complete());
-		return c.future;
+		return exec("UNLOCK TABLES");
 	}
 
 	Object quoteIdentifier(Object t) {

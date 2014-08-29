@@ -1,4 +1,3 @@
-
 class StringFormat {
 	static String className(String string) => StringFormat.titleCase(string);
 

@@ -359,9 +359,7 @@ abstract class Model {
 		statement.setString(queryS);
 		statement.setParams(values);
 
-		Completer c = new Completer();
-
-		statement.bindAndExecute().then((DDOStatement result) {
+		return statement.bindAndExecute().then((DDOStatement result) {
 			int count = result.rowCount();
 
 			if(pk != null && cm.invoke(const Symbol('isAutoIncrement'), []).reflectee) {
@@ -378,10 +376,9 @@ abstract class Model {
 			setNew(false);
 
 			cm.invoke(const Symbol('insertIntoPool'), [this]);
-			c.complete(count);
+			return count;
 		});
 
-		return c.future;
 	}
 
 	Future<int> _update() {
@@ -412,14 +409,10 @@ abstract class Model {
 			}
 			q.add(pk, pkVal);
 		}
-		Completer c = new Completer();
-
-
-		doUpdate(columnValues, cm, q).then((int count) {
+		return doUpdate(columnValues, cm, q).then((int count) {
 			resetModified();
-			c.complete(count);
+			return count;
 		});
-		return c.future;
 	}
 
 	Query getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]);
