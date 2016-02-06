@@ -186,6 +186,7 @@ abstract class Model {
 		if(classes.length > 1) {
 			throw new UnimplementedError('Multiple classes at once isn\'t implemented yet.');
 		} else {
+			//Can't use easy function because we aren't doing the current class, we're doing whatever class we were asked to do
 			ClassMirror cm = reflectClass(classes.first);
 			result.setFetchMode(DDO.FETCH_CLASS, cm);
 			Model obj;
@@ -218,9 +219,14 @@ abstract class Model {
 		return objects;
 	}
 
-	bool fromNumericResultArray(List values, int startCol);
 
-	bool fromAssociativeResultArray(Map<String, Object> values);
+	bool fromAssociativeResultArray(Map<String, Object> values) {
+		// TODO: implement fromAssociativeResultArray
+	}
+
+	bool fromNumericResultArray(List values, int startCol) {
+		// TODO: implement fromNumericResultArray
+	}
 
 	static int doDelete(Query q, [bool flushPool = true]) {
 		throw new UnsupportedError('doDelete needs to be overridden in the child class');
@@ -246,13 +252,22 @@ abstract class Model {
 
 	Model queueForInsert();
 
-	Model copy();
+	Model copy() {
+		Model self = _getChildClass().newInstance(const Symbol(''), []).reflectee;
+		Map<String, Object> values = toArray();
+		for(String key in _doChildStaticMethod(const Symbol('getPrimaryKeys'))) {
+			if (values.containsKey(key)) {
+				values.remove(key);
+			}
+		}
+		self.fromArray(values);
+		return self;
+	}
 
 	bool isModified() => modifiedColumns.isNotEmpty;
 
 	bool isColumnModified(String columnName) {
-		InstanceMirror im = reflect(this);
-		Set<String> modColumns = im.invoke(const Symbol('getModifiedColumns'), []).reflectee;
+		Set<String> modColumns = _doChildInstanceMethod(const Symbol('getModifiedColumns'));
 		return modColumns.map((String col) => col.toLowerCase()).contains(normalizeColumnName(columnName).toLowerCase());
 	}
 
@@ -263,9 +278,24 @@ abstract class Model {
 		return this;
 	}
 
-	Model fromArray(Map<String, Object> array);
+	Model fromArray(Map<String, Object> array) {
+		for(String column in array.keys) {
+			if (!_doChildStaticMethod(const Symbol('hasColumn'), [column])) {
+				continue;
+			}
+			_doChildInstanceMethod(const Symbol('set${StringFormat.titleCase(column)}'), [array[column]]);
+		}
+		return this;
+	}
 
-	Map<String, Object> toArray();
+	Map<String, Object> toArray() {
+		Map<String, Object> results = {};
+		List columns = _getChildColumns();
+		for(String column in columns) {
+			results[column] = getColumn(column);
+		}
+		return results;
+	}
 
 	Map<String, Object> jsonSerialize();
 
@@ -273,15 +303,42 @@ abstract class Model {
 
 	bool getCacheResults() => cacheResults;
 
-	bool hasPrimaryKeyValues();
+	bool hasPrimaryKeyValues() => getPrimaryKeyValues().isNotEmpty;
 
-	Map<String, Object> getPrimaryKeyValues();
+	Map<Object> getPrimaryKeyValues() {
+		Map<Object> values = [];
+		List<String> pks = _doChildStaticMethod(const Symbol('getPrimaryKeys'));
+		for(String pk in pks) {
+			values.add(_doChildInstanceMethod(new Symbol('get${pk}')));
+		}
+		return values;
+	}
 
-	bool validate();
+	bool validate() => validationErrors.isEmpty;
 
 	List<String> getValidationErrors() => validationErrors;
 
-	Future<int> delete();
+	Future<int> delete() {
+		Map<String, Object> pks = _doChildStaticMethod(const Symbol('getPrimaryKeys'));
+		if(pks == null || pks.isEmpty) {
+			throw new Exception('This table has no primary keys');
+		}
+		Query q = baseUser.getQuery();
+		for(String pk in pks.keys) {
+			var pkVal = pks[pk];
+			if(pkVal == null || pkVal.isEmpty) {
+				throw new Exception('Cannot delete using NULL primary key.');
+			}
+			q.addAnd(pk, pkVal);
+		}
+		q.setTable(baseUser.getTableName());
+		Completer c = new Completer();
+		baseUser.doDelete(q, false).then((int cnt) {
+			baseUser.removeFromPool(this);
+			c.complete(cnt);
+		});
+		return c.future;
+	}
 
 	Future<int> save() {
 		if (isDirty) {
@@ -294,15 +351,12 @@ abstract class Model {
 
 		DABLDDO conn = getConnection();
 
-		InstanceMirror im = reflect(this);
-		ClassMirror cm = im.type;
-
-		if (isNew && cm.invoke(const Symbol('hasColumn'), ['created']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['created']).reflectee) {
-			im.invoke(const Symbol('setCreated'), [new DateTime.now().toIso8601String()]);
+		if (isNew && _doChildStaticMethod(const Symbol('hasColumn'), ['created']) && !_doChildInstanceMethod(const Symbol('isColumnModified'), ['created'])) {
+			_doChildInstanceMethod(const Symbol('setCreated'), [new DateTime.now().toIso8601String()]);
 		}
 
-		if ((isNew || isModified()) && cm.invoke(const Symbol('hasColumn'), ['updated']).reflectee && !im.invoke(const Symbol('isColumnModified'), ['updated']).reflectee) {
-			im.invoke(const Symbol('setUpdated'), [new DateTime.now().toIso8601String()]);
+		if ((isNew || isModified()) && _doChildStaticMethod(const Symbol('hasColumn'), ['updated']) && !_doChildInstanceMethod(const Symbol('isColumnModified'), ['updated'])) {
+			_doChildInstanceMethod(const Symbol('setUpdated'), [new DateTime.now().toIso8601String()]);
 		}
 
 		if (isNew){
@@ -311,7 +365,18 @@ abstract class Model {
 		return _update();
 	}
 
-	int archive();
+	Future<int> archive() {
+		if (!_doChildStaticMethod(new Symbol('hasColumn'), ['archived'])) {
+			throw new Error('Cannot call archive on models without "archived" column');
+		}
+
+		if (null != _doChildInstanceMethod(new Symbol('getArchived'))) {
+			throw new Exception('This ${runtimeType.toString()} is already archived');
+		}
+		_doChildInstanceMethod(new Symbol('setArchived'), [new DateTime.now().toIso8601String()]);
+
+		return save();
+	}
 
 	//bool isNew() => isNew;
 
@@ -330,16 +395,15 @@ abstract class Model {
 
 	Future<int> _insert() {
 		DABLDDO conn = getConnection();
-		InstanceMirror im = reflect(this);
-		ClassMirror cm = im.type;
-		String pk = cm.invoke(const Symbol('getPrimaryKey'), []).reflectee;
+
+		String pk = _getChildData(const Symbol('getPrimaryKey'), isStatic: true);
 
 		List<String> fields = new List<String>();
 		List values = new List();
 		List<String> placeHolders = new List<String>();
-		for(String column in cm.invoke(const Symbol('getColumnNames'), []).reflectee) {
-			Object value = im.invoke(new Symbol('get${StringFormat.titleCase(column)}'), []).reflectee;
-			if(null == value && !im.invoke(const Symbol('isColumnModified'), [column]).reflectee) {
+		for(String column in _getChildColumns()) {
+			Object value = _getChildData(new Symbol('get${StringFormat.titleCase(column)}'));
+			if(null == value && !_getChildData(const Symbol('isColumnModified'), params: [column])) {
 				continue;
 			}
 			fields.add(conn.quoteIdentifier(column));
@@ -347,7 +411,7 @@ abstract class Model {
 			placeHolders.add('?');
 		}
 
-		String quotedTable = conn.quoteIdentifier(cm.invoke(const Symbol('getTableName'), []).reflectee);
+		String quotedTable = conn.quoteIdentifier(_getChildData(const Symbol('getTableName'), isStatic: true));
 		String queryS = 'INSERT INTO ${quotedTable} (${fields.join(', ')}) VALUES (${placeHolders.join(', ')})';
 		//TODO: When DBPostgres gets created, enabled this code
 		/*
@@ -362,29 +426,27 @@ abstract class Model {
 		return statement.bindAndExecute().then((DDOStatement result) {
 			int count = result.rowCount();
 
-			if(pk != null && cm.invoke(const Symbol('isAutoIncrement'), []).reflectee) {
+			if(pk != null && _getChildData(const Symbol('isAutoIncrement'), isStatic: true)) {
 				var id = null;
 				if(conn.isGetIdAfterInsert()) {
 					id = result.lastInsertId();
 				}
 				if(null != id) {
-					im.invoke(new Symbol('set${StringFormat.titleCase(pk)}'), [id]);
+					_getChildData(new Symbol('set${StringFormat.titleCase(pk)}'), params: [id]);
 				}
 			}
 
 			resetModified();
 			setNew(false);
 
-			cm.invoke(const Symbol('insertIntoPool'), [this]);
+			_getChildData(const Symbol('insertIntoPool'),params: [this], isStatic: true);
 			return count;
 		});
 
 	}
 
 	Future<int> _update() {
-		InstanceMirror im = reflect(this);
-		ClassMirror cm = im.type;
-		List<String> pks = cm.invoke(const Symbol('getPrimaryKeys'),[]).reflectee;
+		List<String> pks = _doChildStaticMethod(const Symbol('getPrimaryKeys'),[]);
 
 		if (pks == null || pks.isEmpty) {
 			throw new Exception('This table has no primary keys');
@@ -393,7 +455,7 @@ abstract class Model {
 		Map<String, Object> columnValues = new Map<String, Object>();
 
 		for(String column in getModifiedColumns()) {
-			columnValues[column] = im.invoke(new Symbol('get${StringFormat.titleCase(column)}'), []).reflectee;
+			columnValues[column] = _doChildInstanceMethod(new Symbol('get${StringFormat.titleCase(column)}'), []);
 		}
 
 		if(columnValues.isEmpty) {
@@ -403,13 +465,13 @@ abstract class Model {
 		Query q = new Query();
 
 		for(String pk in pks) {
-			Object pkVal = im.invoke(new Symbol('get${StringFormat.titleCase(pk)}'), []).reflectee;
+			Object pkVal = _doChildInstanceMethod(new Symbol('get${StringFormat.titleCase(pk)}'), []);
 			if(pkVal == null) {
 				throw new Exception('Cannot update with NULL primary key.');
 			}
 			q.add(pk, pkVal);
 		}
-		return doUpdate(columnValues, cm, q).then((int count) {
+		return doUpdate(columnValues, reflectClass(this), q).then((int count) {
 			resetModified();
 			return count;
 		});
@@ -418,8 +480,7 @@ abstract class Model {
 	Query getForeignObjectsQuery(String foreignTable, String foreignColumn, String localColumn, [Query q = null]);
 
 	Object getColumn(String colName) {
-		InstanceMirror im = reflect(this);
-		return im.invoke(new Symbol("get${StringFormat.titleCase(colName)}"), []).reflectee;
+		return _doChildInstanceMethod(new Symbol("get${StringFormat.titleCase(colName)}"), []);
 	}
 
 	Model setColumnValue(String columnName, Object value, [String columnType = null]);
@@ -487,7 +548,25 @@ abstract class Model {
 		return this;
 	}
 
-	String getLibraryName();
+	InstanceMirror _getChildInstance() => reflect(this);
+
+	ClassMirror _getChildClass() => reflectClass(this.runtimeType);
+
+	Object _doChildMethod(Symbol s, {bool isStatic: false, List params: null}) {
+		if (params == null) {
+			params = [];
+		}
+		if (isStatic) {
+			return _getChildClass().invoke(s, params).reflectee;
+		}
+		return _getChildInstance().invoke(s, params).reflectee;
+	}
+
+	Object _doChildInstanceMethod(Symbol s, [List params = null]) => _doChildMethod(s, isStatic: false, params: params);
+
+	Object _doChildStaticMethod(Symbol s, [List params = null]) => _doChildMethod(s, isStatic: true, params: params);
+
+	List _getChildColumns() => _doChildStaticMethod(const Symbol('getColumnNames'));
 
 	static DABLDDO getConnection() {
 		return DBManager.getConnection();

@@ -1,4 +1,5 @@
 class StringFormat {
+
 	static String className(String string) => StringFormat.titleCase(string);
 
 	static String classMethod(String string) => StringFormat.lcFirst(StringFormat.titleCase(string));
