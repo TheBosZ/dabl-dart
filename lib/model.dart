@@ -305,8 +305,8 @@ abstract class Model {
 
 	bool hasPrimaryKeyValues() => getPrimaryKeyValues().isNotEmpty;
 
-	Map<Object> getPrimaryKeyValues() {
-		Map<Object> values = [];
+	List<Object> getPrimaryKeyValues() {
+		List<Object> values = [];
 		List<String> pks = _doChildStaticMethod(const Symbol('getPrimaryKeys'));
 		for(String pk in pks) {
 			values.add(_doChildInstanceMethod(new Symbol('get${pk}')));
