@@ -177,7 +177,7 @@ abstract class Model {
 		return result;
 	}
 
-	static List<Model> fromResult(DDOStatement result, List<Type> classes, [bool usePool = true]) {
+	static List<Model> fromResult(DDOStatement result, List classes, [bool usePool = true]) {
 		if(classes == null) {
 			throw new ArgumentError('No class name given');
 		}
@@ -283,7 +283,7 @@ abstract class Model {
 			if (!_doChildStaticMethod(const Symbol('hasColumn'), [column])) {
 				continue;
 			}
-			_doChildInstanceMethod(const Symbol('set${StringFormat.titleCase(column)}'), [array[column]]);
+			_doChildInstanceMethod(new Symbol('set${StringFormat.titleCase(column)}'), [array[column]]);
 		}
 		return this;
 	}
@@ -318,26 +318,33 @@ abstract class Model {
 
 	List<String> getValidationErrors() => validationErrors;
 
-	Future<int> delete() {
-		Map<String, Object> pks = _doChildStaticMethod(const Symbol('getPrimaryKeys'));
+	/**
+	 * Creates and executes DELETE Query for this object
+	 * Deletes any database rows with a primary key(s) that match $this
+	 * NOTE/BUG: If you alter pre-existing primary key(s) before deleting, then you will be
+	 * deleting based on the new primary key(s) and not the originals,
+	 * leaving the original row unchanged(if it exists).  Also, since NULL isn't an accurate way
+	 * to look up a row, I return if one of the primary keys is null.
+	 * @return int number of records deleted
+	 */
+	Future<int> delete() async {
+		List<String> pks = _doChildStaticMethod(const Symbol('getPrimaryKeys'));
 		if(pks == null || pks.isEmpty) {
 			throw new Exception('This table has no primary keys');
 		}
-		Query q = baseUser.getQuery();
-		for(String pk in pks.keys) {
-			var pkVal = pks[pk];
-			if(pkVal == null || pkVal.isEmpty) {
+		Query q = _doChildStaticMethod(const Symbol('getQuery'));
+		for(String pk in pks) {
+			if(pk == null || pk.isEmpty) {
 				throw new Exception('Cannot delete using NULL primary key.');
 			}
+			Object pkVal = _doChildInstanceMethod(new Symbol('get${pk}'));
 			q.addAnd(pk, pkVal);
 		}
-		q.setTable(baseUser.getTableName());
-		Completer c = new Completer();
-		baseUser.doDelete(q, false).then((int cnt) {
-			baseUser.removeFromPool(this);
-			c.complete(cnt);
-		});
-		return c.future;
+		q.setTable(_doChildStaticMethod(const Symbol('getTableName')));
+
+		int cnt = await _doChildStaticMethod(const Symbol('doDelete'), [q, false]);
+		_doChildStaticMethod(const Symbol('removeFromPool'), [this]);
+		return cnt;
 	}
 
 	Future<int> save() {
@@ -367,7 +374,7 @@ abstract class Model {
 
 	Future<int> archive() {
 		if (!_doChildStaticMethod(new Symbol('hasColumn'), ['archived'])) {
-			throw new Error('Cannot call archive on models without "archived" column');
+			throw new Exception('Cannot call archive on models without "archived" column');
 		}
 
 		if (null != _doChildInstanceMethod(new Symbol('getArchived'))) {
@@ -396,14 +403,14 @@ abstract class Model {
 	Future<int> _insert() {
 		DABLDDO conn = getConnection();
 
-		String pk = _getChildData(const Symbol('getPrimaryKey'), isStatic: true);
+		String pk = _doChildStaticMethod(const Symbol('getPrimaryKey'));
 
 		List<String> fields = new List<String>();
 		List values = new List();
 		List<String> placeHolders = new List<String>();
 		for(String column in _getChildColumns()) {
-			Object value = _getChildData(new Symbol('get${StringFormat.titleCase(column)}'));
-			if(null == value && !_getChildData(const Symbol('isColumnModified'), params: [column])) {
+			Object value = _doChildInstanceMethod(new Symbol('get${StringFormat.titleCase(column)}'));
+			if(null == value && !_doChildInstanceMethod(const Symbol('isColumnModified'), [column])) {
 				continue;
 			}
 			fields.add(conn.quoteIdentifier(column));
@@ -411,7 +418,7 @@ abstract class Model {
 			placeHolders.add('?');
 		}
 
-		String quotedTable = conn.quoteIdentifier(_getChildData(const Symbol('getTableName'), isStatic: true));
+		String quotedTable = conn.quoteIdentifier(_doChildStaticMethod(const Symbol('getTableName')));
 		String queryS = 'INSERT INTO ${quotedTable} (${fields.join(', ')}) VALUES (${placeHolders.join(', ')})';
 		//TODO: When DBPostgres gets created, enabled this code
 		/*
@@ -426,20 +433,20 @@ abstract class Model {
 		return statement.bindAndExecute().then((DDOStatement result) {
 			int count = result.rowCount();
 
-			if(pk != null && _getChildData(const Symbol('isAutoIncrement'), isStatic: true)) {
+			if(pk != null && _doChildStaticMethod(const Symbol('isAutoIncrement'))) {
 				var id = null;
 				if(conn.isGetIdAfterInsert()) {
 					id = result.lastInsertId();
 				}
 				if(null != id) {
-					_getChildData(new Symbol('set${StringFormat.titleCase(pk)}'), params: [id]);
+					_doChildInstanceMethod(new Symbol('set${StringFormat.titleCase(pk)}'), [id]);
 				}
 			}
 
 			resetModified();
 			setNew(false);
 
-			_getChildData(const Symbol('insertIntoPool'),params: [this], isStatic: true);
+			_doChildStaticMethod(const Symbol('insertIntoPool'), [this]);
 			return count;
 		});
 
@@ -471,7 +478,7 @@ abstract class Model {
 			}
 			q.add(pk, pkVal);
 		}
-		return doUpdate(columnValues, reflectClass(this), q).then((int count) {
+		return doUpdate(columnValues, reflectClass(this.runtimeType), q).then((int count) {
 			resetModified();
 			return count;
 		});

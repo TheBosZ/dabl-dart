@@ -9,3 +9,4 @@ dependencies:
   ddo:
     path: ../pdodart
   intl: '>=0.8.7 <0.10.0'
+  test: any
