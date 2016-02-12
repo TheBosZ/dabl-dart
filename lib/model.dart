@@ -297,7 +297,7 @@ abstract class Model {
 		return results;
 	}
 
-	Map<String, Object> jsonSerialize();
+	Map<String, Object> toJson() => toArray();
 
 	Model setCacheResults([bool value = true]);
 
