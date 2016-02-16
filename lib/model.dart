@@ -253,7 +253,7 @@ abstract class Model {
 	Model queueForInsert();
 
 	Model copy() {
-		Model self = _getChildClass().newInstance(const Symbol(''), []).reflectee;
+		Model self = _getChildClass().newInstance(const Symbol(''), const []).reflectee;
 		Map<String, Object> values = toArray();
 		for(String key in _doChildStaticMethod(const Symbol('getPrimaryKeys'))) {
 			if (values.containsKey(key)) {
